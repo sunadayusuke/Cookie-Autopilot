@@ -1,0 +1,139 @@
+/* onboarding 固有のレイアウト（docs/DESIGN.md、docs/SPEC.md §14.3）。
+   トークン・共通コンポーネント（PresetCard/Chip/PushButton/Button/HUD 等）は theme.css を参照。
+   幅 560 中央、白カード radius16 + 影。ライトモード固定。 */
+
+body {
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  background: var(--bg-page);
+  padding: var(--space-6) var(--space-5);
+}
+
+.onboarding {
+  width: 100%;
+  max-width: 560px;
+}
+
+.onboarding-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  background: var(--bg-surface);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+  padding: var(--space-6);
+}
+
+/* ---- 見出し: 22px 500 + 本文 14px ---- */
+
+.onboarding-header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.onboarding-header h1 {
+  font-size: 22px;
+  font-weight: 500;
+  color: var(--fg);
+}
+
+.onboarding-lead {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--fg-secondary);
+}
+
+/* ---- セクション共通: 見出し15px 500 + 上に区切り線 ---- */
+
+.onboarding-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding-top: var(--space-5);
+  border-top: 1px solid var(--hairline);
+}
+
+.onboarding-section-title {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--fg);
+}
+
+/* カテゴリ表（CategoryTable。「それぞれの Cookie は何をするの？」）の見た目は
+   theme.css に共通化した（src/ui/categoryTable.ts が options とも共用する）。 */
+
+/* ---- 注意書き（末尾 2 文。13px muted）---- */
+
+.onboarding-notes {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--hairline);
+}
+
+.onboarding-notes p {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--fg-muted);
+}
+
+/* ---- フッター（CTA・完了表示）---- */
+
+.onboarding-footer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.onboarding-actions .push-btn {
+  width: 100%;
+}
+
+.onboarding-done {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+
+.onboarding-done-heading {
+  font-size: 18px;
+  font-weight: 500;
+  color: var(--fg);
+}
+
+.onboarding-done-message {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--fg);
+}
+
+.onboarding-done-summary,
+.onboarding-done-countdown {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--fg-muted);
+}
+
+/* 「今すぐ閉じる」lg は .onboarding-actions の CTA と同じ全幅、
+   「閉じない」「詳細設定を開く」は同じ重みの ghost なので横並びにする。
+   align-self: stretch で親（align-items: flex-start）の shrink-to-fit を上書きし、
+   全幅 CTA が循環参照なしに 100% を解決できるようにする。 */
+.onboarding-done-actions {
+  display: flex;
+  flex-direction: column;
+  align-self: stretch;
+  gap: var(--space-3);
+}
+
+.onboarding-done-actions .push-btn-lg {
+  width: 100%;
+}
+
+.onboarding-done-secondary-actions {
+  display: flex;
+  gap: var(--space-2);
+}

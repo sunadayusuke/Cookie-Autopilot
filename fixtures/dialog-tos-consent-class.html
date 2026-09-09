@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <title>fixture: 規約更新モーダル（class="consent-modal" だけ）</title>
+    <script src="/content.js"></script>
+    <style>
+      body { margin: 0; font: 15px/1.8 system-ui, -apple-system, 'Hiragino Sans', sans-serif; }
+      main { padding: 24px; max-width: 720px; }
+      pre { background: #f3f4f6; padding: 12px; border-radius: 8px; min-height: 3em; }
+      .backdrop { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.4); }
+      .consent-modal {
+        position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%);
+        width: 440px; padding: 24px; background: #fff; border-radius: 12px;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.25);
+      }
+      .consent-modal button { margin-right: 8px; padding: 10px 24px; border: 1px solid #111827; border-radius: 8px; background: #fff; cursor: pointer; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>規約更新モーダル（class="consent-modal" だけ）</h1>
+      <p>
+        class に <code>consent</code> は含みますが Cookie 語はどこにも無いダイアログです。
+        <code>consent</code> ・ <code>privacy</code> は<strong>汎用の属性ヒント</strong>なので、
+        dialog / position と同じくテキストに Cookie 固有語が無ければ容器にしません。
+        容器にしてしまうと、accept モードで「同意する」を・reject モードで「同意しない」を
+        押してしまい、どちらも誤クリックになります。
+      </p>
+      <p>reject / accept どちらでも何も起きず、モーダルがそのまま残るのが正解です。</p>
+      <pre id="log"></pre>
+    </main>
+
+    <div class="backdrop"></div>
+    <div class="consent-modal" id="tos-modal">
+      <p>利用規約と個人情報の取り扱いを更新しました。新しい規約に同意しますか？</p>
+      <button type="button" id="tos-agree">同意する</button>
+      <button type="button" id="tos-disagree">同意しない</button>
+    </div>
+
+    <script>
+      (function () {
+        var log = document.getElementById('log');
+        function record(text) {
+          log.textContent += '[' + new Date().toLocaleTimeString('ja-JP') + '] ' + text + '\n';
+        }
+        document.addEventListener(
+          'click',
+          function (event) {
+            var el = event.target.closest('button, a, [role="button"], input');
+            if (el) record('クリック（本来は起きないはず）: ' + (el.textContent || el.value || '').trim());
+          },
+          true,
+        );
+        record('待機中。モーダルがそのまま残れば成功です。');
+      })();
+    </script>
+  </body>
+</html>

@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>fixture: 英語の通知のみバナー</title>
+    <script src="/content.js"></script>
+    <style>
+      body { margin: 0; font: 15px/1.8 system-ui, -apple-system, 'Hiragino Sans', sans-serif; }
+      main { padding: 24px; max-width: 720px; }
+      pre { background: #f3f4f6; padding: 12px; border-radius: 8px; min-height: 3em; }
+      .fx-cookie-toast {
+        position: fixed; left: 24px; bottom: 24px; z-index: 10; width: 420px; max-width: calc(100% - 48px);
+        padding: 18px 20px; border-radius: 12px; background: #111827; color: #f9fafb;
+        display: flex; gap: 12px; align-items: center; flex-wrap: wrap;
+      }
+      .fx-cookie-toast p { margin: 0; flex: 1 1 100%; }
+      .fx-cookie-toast button { padding: 8px 18px; border: 0; border-radius: 8px; background: #2563eb; color: #fff; cursor: pointer; }
+      .fx-cookie-toast a { color: #93c5fd; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>英語の通知のみバナー</h1>
+      <p>選択肢が「Got it!」しかないので、reject / accept のどちらでも押されます（「Learn more」は非決定語）。</p>
+      <p><code>?mode=accept</code> を付けると accept モードになります。</p>
+      <pre id="log"></pre>
+    </main>
+
+    <div class="fx-cookie-toast" id="fx-cookie-toast-en">
+      <p>This website uses cookies to ensure you get the best experience.</p>
+      <button class="fx-ok">Got it!</button>
+      <a href="/cookie-policy">Learn more</a>
+    </div>
+
+    <script>
+      (function () {
+        var log = document.getElementById('log');
+        function record(text) {
+          log.textContent += '[' + new Date().toLocaleTimeString('ja-JP') + '] ' + text + '\n';
+        }
+        document.addEventListener(
+          'click',
+          function (event) {
+            var el = event.target.closest('button, a, [role="button"], input');
+            if (el) record('クリック: ' + (el.textContent || el.value || '').trim());
+          },
+          true,
+        );
+        var banner = document.getElementById('fx-cookie-toast-en');
+        banner.addEventListener('click', function (event) {
+          if (!event.target.closest('button')) return;
+          record('バナーを閉じました');
+          banner.remove();
+        });
+      })();
+    </script>
+  </body>
+</html>

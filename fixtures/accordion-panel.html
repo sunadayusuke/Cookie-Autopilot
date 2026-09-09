@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <title>fixture: その場で開くアコーディオン型の設定パネル</title>
+    <script src="/content.js"></script>
+    <style>
+      body { margin: 0; font: 15px/1.8 system-ui, -apple-system, 'Hiragino Sans', sans-serif; }
+      main { padding: 24px; max-width: 720px; }
+      pre { background: #f3f4f6; padding: 12px; border-radius: 8px; min-height: 3em; white-space: pre-wrap; }
+      .fx-cookie-bar {
+        position: fixed; left: 0; right: 0; bottom: 0; z-index: 10;
+        display: flex; gap: 12px; align-items: center; flex-wrap: wrap;
+        padding: 20px 24px; background: #111827; color: #f9fafb;
+      }
+      .fx-cookie-bar p { margin: 0; flex: 1 1 320px; }
+      .fx-cookie-bar button { padding: 10px 16px; border: 0; border-radius: 8px; font-size: 14px; cursor: pointer; }
+      .fx-agree { background: #2563eb; color: #fff; }
+      .fx-config { background: #e5e7eb; color: #111827; }
+      /* 設定セクションはページの一部として最初から見えている（開くのは中身だけ） */
+      .fx-cookie-details {
+        margin: 0 24px 200px; padding: 16px 20px;
+        border: 1px solid #e5e7eb; border-radius: 12px; max-width: 680px;
+      }
+      .fx-cookie-details h2 { margin: 0; font-size: 16px; }
+      .fx-cookie-details ul { list-style: none; margin: 12px 0 0; padding: 0; }
+      .fx-cookie-details li { padding: 8px 0; border-top: 1px solid #e5e7eb; }
+      .fx-cookie-details label { display: flex; gap: 8px; align-items: center; font-weight: 600; }
+      .fx-cookie-details .fx-save { margin-top: 16px; padding: 10px 16px; border: 0; border-radius: 8px; background: #111827; color: #fff; cursor: pointer; }
+      .fx-cookie-details [hidden] { display: none; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>その場で開くアコーディオン型の設定パネル</h1>
+      <p>
+        設定パネルが<strong>ページの一部として最初から見えている</strong>タイプです。「設定」を押しても
+        新しい容器は現れず、<strong>その中のトグルと保存ボタンが開くだけ</strong>なので、
+        「新しく見えるようになった容器」では見つけられません。
+        <strong>操作できるトグルが増えたこと</strong>を手がかりにパネルとして扱います。
+      </p>
+      <p>
+        reject モードでは機能（＝設定の記憶）を残して分析と広告を外し、「選択を保存」を押します。
+        <code>?mode=accept</code> を付けると「全てに同意する」が押されます。
+      </p>
+      <pre id="log"></pre>
+    </main>
+
+    <div class="fx-cookie-details" id="fx-cookie-details">
+      <h2>Cookie の設定</h2>
+      <ul id="fx-cookie-rows" hidden>
+        <li><label><input type="checkbox" id="fx-essential" checked disabled /> 必須 Cookie（常に有効）</label></li>
+        <li><label><input type="checkbox" id="fx-functional" checked /> 機能 Cookie</label></li>
+        <li><label><input type="checkbox" id="fx-analytics" checked /> 分析 Cookie</label></li>
+        <li><label><input type="checkbox" id="fx-ads" checked /> 広告 Cookie</label></li>
+      </ul>
+      <button class="fx-save" hidden>選択を保存</button>
+    </div>
+
+    <div class="fx-cookie-bar" id="fx-cookie-bar">
+      <p>当サイトでは Cookie を使用しています。用途ごとの設定は「設定」からご確認ください。</p>
+      <button class="fx-agree">全てに同意する</button>
+      <button class="fx-config" aria-expanded="false" aria-controls="fx-cookie-rows">設定</button>
+    </div>
+
+    <script>
+      (function () {
+        var log = document.getElementById('log');
+        function record(text) {
+          log.textContent += '[' + new Date().toLocaleTimeString('ja-JP') + '] ' + text + '\n';
+        }
+        document.addEventListener(
+          'click',
+          function (event) {
+            var el = event.target.closest('button, a, [role="button"], input');
+            if (el && el.type !== 'checkbox') record('クリック: ' + (el.textContent || el.value || '').trim());
+          },
+          true,
+        );
+
+        var bar = document.getElementById('fx-cookie-bar');
+        var details = document.getElementById('fx-cookie-details');
+        var rows = document.getElementById('fx-cookie-rows');
+        var save = details.querySelector('.fx-save');
+        var config = bar.querySelector('.fx-config');
+
+        config.addEventListener('click', function () {
+          rows.hidden = false;
+          save.hidden = false;
+          config.setAttribute('aria-expanded', 'true');
+          record('設定パネルを開きました');
+        });
+        bar.querySelector('.fx-agree').addEventListener('click', function () {
+          record('全てに同意してバナーを閉じました');
+          bar.remove();
+          details.remove();
+        });
+
+        details.addEventListener('change', function (event) {
+          var input = event.target;
+          var label = input.closest('label');
+          record('トグル: ' + (label ? label.textContent.trim() : input.id) + ' -> ' + (input.checked ? 'on' : 'off'));
+        });
+        save.addEventListener('click', function () {
+          var on = [];
+          rows.querySelectorAll('input[type="checkbox"]').forEach(function (input) {
+            if (input.checked) on.push(input.closest('label').textContent.trim());
+          });
+          record('選択を保存 -> 残ったのは: ' + on.join(' / '));
+          record('バナーと設定を閉じました');
+          details.remove();
+          bar.remove();
+        });
+      })();
+    </script>
+  </body>
+</html>

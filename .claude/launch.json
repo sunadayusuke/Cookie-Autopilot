@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "fixtures",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["fixtures"],
+      "port": 4173
+    }
+  ]
+}

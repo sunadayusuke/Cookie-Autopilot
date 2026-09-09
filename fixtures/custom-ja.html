@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <title>fixture: 独自実装の日本語バナー</title>
+    <script src="/content.js"></script>
+    <style>
+      body { margin: 0; font: 15px/1.8 system-ui, -apple-system, 'Hiragino Sans', sans-serif; }
+      main { padding: 24px; max-width: 720px; }
+      pre { background: #f3f4f6; padding: 12px; border-radius: 8px; min-height: 3em; }
+      .fx-cookie-strip {
+        position: fixed; left: 0; right: 0; bottom: 0; z-index: 10;
+        display: flex; gap: 12px; align-items: center; flex-wrap: wrap;
+        padding: 20px 24px; background: #111827; color: #f9fafb;
+      }
+      .fx-cookie-strip p { margin: 0; flex: 1 1 320px; }
+      .fx-cookie-strip button { padding: 10px 16px; border: 0; border-radius: 8px; font-size: 14px; cursor: pointer; }
+      .fx-allow { background: #2563eb; color: #fff; }
+      .fx-deny { background: #e5e7eb; color: #111827; }
+      .fx-config { background: transparent; color: #93c5fd; text-decoration: underline; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>独自実装の日本語バナー</h1>
+      <p>reject モードでは「拒否」が押され、accept モードでは「すべて許可」が押されます。</p>
+      <p><code>?mode=accept</code> を付けると accept モードになります。</p>
+      <pre id="log"></pre>
+    </main>
+
+    <div class="fx-cookie-strip" id="fx-cookie-strip">
+      <p>当サイトでは Cookie を使用して、利便性の向上とアクセス解析を行っています。</p>
+      <button class="fx-allow">すべて許可</button>
+      <button class="fx-deny">拒否</button>
+      <button class="fx-config">Cookie の設定</button>
+    </div>
+
+    <script>
+      (function () {
+        var log = document.getElementById('log');
+        function record(text) {
+          var time = new Date().toLocaleTimeString('ja-JP');
+          log.textContent += '[' + time + '] ' + text + '\n';
+        }
+        document.addEventListener(
+          'click',
+          function (event) {
+            var el = event.target.closest('button, a, [role="button"], input');
+            if (el) record('クリック: ' + (el.textContent || el.value || '').trim());
+          },
+          true,
+        );
+        var banner = document.getElementById('fx-cookie-strip');
+        banner.addEventListener('click', function (event) {
+          var el = event.target.closest('button');
+          if (!el || el.classList.contains('fx-config')) return;
+          record('バナーを閉じました');
+          banner.remove();
+        });
+      })();
+    </script>
+  </body>
+</html>

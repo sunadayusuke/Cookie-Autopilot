@@ -1,0 +1,287 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <title>fixture: mercedes-benz.co.jp の同意画面（構造は実サイトのまま）</title>
+    <script src="/content.js"></script>
+    <style>
+      body { margin: 0; font: 15px/1.9 system-ui, -apple-system, 'Hiragino Sans', sans-serif; color: #111; }
+      main { padding: 24px; max-width: 760px; }
+      h1 { font-size: 22px; }
+      pre { background: #f3f4f6; padding: 12px; border-radius: 8px; min-height: 3em; white-space: pre-wrap; }
+
+      /* 実サイトの部品はすべてカスタム要素（Stencil）。未定義のカスタム要素は既定で
+         display:inline なので、実サイトの見た目に合わせて敷き直す */
+      cmm-cookie-banner, cmm-languages-list, cmm-heading-section, cmm-buttons-wrapper,
+      cmm-footer-links, cmm-cookie-settings, wb7-heading, wb7-text { display: block; }
+      wb7-button {
+        display: inline-flex; align-items: center; gap: 6px; cursor: pointer;
+        padding: 8px 16px; font-size: 14px; background: #0078d6; color: #fff;
+      }
+      wb7-button.button--toggle-cookie-details { background: #fff; color: #0078d6; box-shadow: inset 0 0 0 1px #0078d6; }
+      wb7-button.toggle-button { background: none; color: #0078d6; padding: 4px 8px; font-size: 12px; }
+      wb7-link { display: inline-flex; cursor: pointer; color: #6b7280; margin-right: 16px; font-size: 12px; }
+      cmm-icon { display: inline-block; width: 12px; height: 12px; border: 1px solid currentColor; border-radius: 50%; }
+
+      .cmm-cookie-banner {
+        position: fixed; inset: 0; z-index: 20; display: flex; align-items: center; justify-content: center;
+        background: rgba(15, 23, 42, 0.55);
+      }
+      .cmm-cookie-banner__content {
+        width: 760px; max-width: calc(100% - 48px); max-height: calc(100vh - 48px); overflow: auto;
+        padding: 32px; background: #fff; box-shadow: 0 24px 48px rgba(0, 0, 0, 0.3);
+      }
+      .main-title { font-size: 20px; font-weight: 700; margin-bottom: 12px; }
+      .main-description { font-size: 13px; margin-bottom: 12px; }
+      .cmm-cookie-banner__actions { margin-top: 20px; }
+      .button-group { display: flex; gap: 12px; justify-content: flex-end; }
+      .footer-links__list { list-style: none; display: flex; margin: 16px 0 0; padding: 0; }
+
+      /* 設定パネルは最初から DOM にあるが、「設定」を押すまでは隠れている */
+      cmm-cookie-settings { display: none; }
+      .cmm-cookie-banner__content.settings-expanded cmm-cookie-settings { display: block; }
+      #cookie-settings { margin-top: 24px; border-top: 1px solid #e5e7eb; padding-top: 16px; }
+      .cookie-settings-content ul { list-style: none; margin: 0; padding: 0; }
+      .category-item { padding: 12px 0; border-bottom: 1px solid #e5e7eb; }
+      .category-description { display: block; font-size: 12px; color: #6b7280; margin: 4px 0 0 28px; }
+      .cookie-settings-content .button-group { margin-top: 20px; }
+
+      /* カテゴリの詳細（個別サービス）は「詳細を表示する」を押すまで畳まれている */
+      .consent-list { display: none; margin: 8px 0 0 28px !important; }
+      .category-item.details-expanded .consent-list { display: block; }
+      .consent-item { font-size: 13px; padding: 2px 0; }
+      .consent-item__information { display: flex; align-items: center; gap: 6px; }
+      .consent-item__icon { border: 0; background: none; cursor: pointer; color: #0078d6; padding: 0; }
+
+      /* 実体の input は透明にして重ね、見えているのは .cmm-checkbox-fake の方 */
+      .cmm-checkbox { display: flex; align-items: flex-start; gap: 8px; position: relative; cursor: pointer; font-weight: 600; }
+      .consent-label { font-weight: 400; }
+      .cmm-checkbox-input { position: absolute; top: 0; left: 0; width: 20px; height: 20px; margin: 0; opacity: 0; cursor: pointer; }
+      .cmm-checkbox-fake { flex: none; width: 20px; height: 20px; border: 1px solid #6b7280; background: #fff; }
+      .cmm-checkbox-input:checked + .cmm-checkbox-fake { background: #0078d6; border-color: #0078d6; }
+      .cmm-checkbox-input:indeterminate + .cmm-checkbox-fake { background: #9ca3af; border-color: #9ca3af; }
+      .cmm-checkbox-input:disabled + .cmm-checkbox-fake { opacity: 0.5; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>mercedes-benz.co.jp の同意画面（構造は実サイトのまま配置）</h1>
+      <p>
+        バナーの要素名・class・属性・ボタンの文言・<code>consent-item</code> の繰り返しといった
+        構造は実サイトから取得した HTML のまま保持し、説明文はこちらで書き直しています。簡略版
+        <code>mercedes-like.html</code> との差分を洗い出すための fixture です。
+      </p>
+      <p>
+        reject モードでは「設定」を押してパネルを開き、カテゴリのチェックだけ（分析と統計・
+        マーケティング・メルセデス・ベンツ関連会社へのデータ共有）を外して「設定の保存」を押します。
+        必須Cookie・個別の consent 項目・「すべて選択する」には触りません。
+        <code>?mode=accept</code> では「全てに同意」が押されます。
+      </p>
+      <p>
+        以下はページ本文のダミーです。実サイトと同じく、同意画面はページ本文の上に固定表示されます。
+        新型車のラインアップ、認定中古車の在庫検索、正規販売店の案内、メンテナンスプログラムの
+        ご説明、金融サービスのお見積り、試乗のご予約といった導線が並ぶ想定の本文で、
+        同意画面の容器判定がページ本体を巻き込まないことを確かめるために置いています。
+        本文はスクロールできる程度の分量にしてあり、バナーの背後で通常どおり表示されます。
+        セダン、ステーションワゴン、クーペ、カブリオレ、SUV、そして電動モデルまで、
+        用途に合わせた車種をご覧いただけます。各モデルのページでは、装備の詳細、
+        ボディカラーとインテリアの組み合わせ、オプションの選択、参考価格の目安を確認できます。
+        正規販売店では、実車のご確認、試乗、お見積り、下取りのご相談を承っています。
+      </p>
+      <pre id="log"></pre>
+    </main>
+
+    <cmm-cookie-banner class="hydrated"><div class="cmm-cookie-banner" role="dialog" aria-modal="true"><div class="cmm-cookie-banner__content" tabindex="0"><div class="cmm-cookie-banner__scroll-area is-at-bottom"><cmm-languages-list class="hydrated"></cmm-languages-list><cmm-heading-section class="hydrated"><div class="heading-section"><wb7-heading class="main-title wb-heading hydrated" size="m" tag="div">メルセデス・ベンツ日本合同会社（Mercedes-Benz Japan G.K.）およびメルセデス・ベンツ社は、複数の目的でCookieを利用しています</wb7-heading><wb7-text class="main-description wb-text hydrated" size="l" tag="p">メルセデス・ベンツ日本合同会社およびメルセデス・ベンツ社（以下「MBJ」及び「MBAG」といいます）は、Cookieを利用することで、お客様に「MBJ」及び「MBAG」のウェブサイトを快適にご利用いただけるようにし、あわせてお客様に合ったご案内や広告を表示できるよう継続的に改善を行っています。「MBJ」及び「MBAG」は、こうしたご案内や広告を自社および外部のウェブサイトでも表示できるよう、複数のパートナー各社と連携しています。また、関連会社である「メルセデス・AMG GmbH」のサイトでもお客様に合った広告を表示するため、当サイトで取得したデータを当該関連会社と共有する場合があります。</wb7-text><wb7-text class="main-description wb-text hydrated" size="l" tag="p"></wb7-text><wb7-text class="main-description wb-text hydrated" size="l" tag="p">お客様はいつでも同意を撤回することができます。詳しい内容と選択肢は、下の「設定」およびメルセデス・ベンツ日本合同会社のプライバシーポリシーからご確認いただけます。</wb7-text></div></cmm-heading-section></div><div class="cmm-cookie-banner__actions"><cmm-buttons-wrapper class="hydrated"><div class="buttons-wrapper"><div class="button-group"><wb7-button class="button button--toggle-cookie-details wb-button hydrated" data-test="toggle-cookie-details" variant="primary" size="s">設定</wb7-button><wb7-button class="button button--accept-all wb-button hydrated" data-test="handle-accept-all-button" variant="primary" size="s">全てに同意</wb7-button></div></div></cmm-buttons-wrapper><cmm-footer-links class="hydrated"><footer class="footer-links"><ul class="footer-links__list" data-test="footer-links"><li><wb7-link class="footer-links__list__item wb-link hydrated" variant="standalone" size="m">プライバシーポリシー</wb7-link></li><li><wb7-link class="footer-links__list__item wb-link hydrated" variant="standalone" size="m">インプリント</wb7-link></li></ul></footer></cmm-footer-links></div><cmm-cookie-settings class="hydrated"><div id="cookie-settings"><div class="cookie-settings-content"><ul><li class="select-all-item"><label class="select-all--label cmm-checkbox"><input type="checkbox" class="cmm-checkbox-input cmm-checkbox-input--category selected-partial" data-test="handle-select-all-change"><div class="cmm-checkbox-fake"></div>すべて選択する</label></li><li class="category-item" data-category-wrapper="必須Cookie "><div class="category-select-all"><label class="category-label cmm-checkbox"><input type="checkbox" class="cmm-checkbox-input cmm-checkbox-input--category selected-all" disabled="" data-category="必須Cookie " data-test="handle-category-change"><div class="cmm-checkbox-fake"></div>必須Cookie </label></div><wb7-text class="category-description wb-text hydrated" size="m" tag="div">必須のウェブ技術およびCookieは、当ウェブサイトに技術的にアクセスし、利用するために欠かせないものです。ページの遷移や表示、ご利用ブラウザに合わせた表示の調整、同意状況の記録といった基本的な機能を担っており、これらのウェブ技術とCookieがなければ当ウェブサイトは正しく動作しません。</wb7-text><wb7-button class="toggle-button wb-button hydrated" data-test="toggle-category-details" aria-label="詳細を表示する" variant="tertiary" size="s"><cmm-icon class="hydrated"></cmm-icon></wb7-button><ul class="consent-list"><li class="consent-item"><label class="consent-label cmm-checkbox"><input type="checkbox" class="cmm-checkbox-input" disabled="" data-test="handle-consent-change" data-template-id="tSaNgSbhw" data-category="必須Cookie "><div class="cmm-checkbox-fake"></div><div class="consent-item__information"><span class="consent-item__name">Usercentrics Consent Management Platform | JP</span><button type="button" class="consent-item__icon" data-test="toggle-consent-info-modal" aria-label="Usercentrics Consent Management Platform | JP"><cmm-icon class="hydrated"></cmm-icon></button></div></label></li><li class="consent-item"><label class="consent-label cmm-checkbox"><input type="checkbox" class="cmm-checkbox-input" disabled="" data-test="handle-consent-change" data-template-id="XdGYN2BsK" data-category="必須Cookie "><div class="cmm-checkbox-fake"></div><div class="consent-item__information"><span class="consent-item__name">Content-Management-System</span><button type="button" class="consent-item__icon" data-test="toggle-consent-info-modal" aria-label="Content-Management-System"><cmm-icon class="hydrated"></cmm-icon></button></div></label></li><li class="consent-item"><label class="consent-label cmm-checkbox"><input type="checkbox" class="cmm-checkbox-input" disabled="" data-test="handle-consent-change" data-template-id="EUB92J07k" data-category="必須Cookie "><div class="cmm-checkbox-fake"></div><div class="consent-item__information"><span class="consent-item__name">Mercedes Me Login</span><button type="button" class="consent-item__icon" data-test="toggle-consent-info-modal" aria-label="Mercedes Me Login"><cmm-icon class="hydrated"></cmm-icon></button></div></label></li></ul></li><li class="category-item" data-category-wrapper="分析と統計"><div class="category-select-all"><label class="category-label cmm-checkbox"><input type="checkbox" class="cmm-checkbox-input cmm-checkbox-input--category selected-all" data-category="分析と統計" data-test="handle-category-change"><div class="cmm-checkbox-fake"></div>分析と統計</label></div><wb7-text class="category-description wb-text hydrated" size="m" tag="div">「MBJ」及び「MBAG」は、ウェブサイトの使いやすさと表示性能を継続的に高めたいと考えています。そのため、どの機能やコンテンツがどのくらいの頻度で利用されているかを匿名で計測・分析する技術（Cookieを含みます）を用いています。この分析結果をもとに、ウェブサイトの改善や、利用者にとって関心の高いコンテンツの表示に役立てています。</wb7-text><wb7-button class="toggle-button wb-button hydrated" data-test="toggle-category-details" aria-label="詳細を表示する" variant="tertiary" size="s"><cmm-icon class="hydrated"></cmm-icon></wb7-button><ul class="consent-list"><li class="consent-item"><label class="consent-label cmm-checkbox"><input type="checkbox" class="cmm-checkbox-input" data-test="handle-consent-change" data-template-id="LqpGaPV7D" data-category="分析と統計"><div class="cmm-checkbox-fake"></div><div class="consent-item__information"><span class="consent-item__name">Google Analytics | JP</span><button type="button" class="consent-item__icon" data-test="toggle-consent-info-modal" aria-label="Google Analytics | JP"><cmm-icon class="hydrated"></cmm-icon></button></div></label></li><li class="consent-item"><label class="consent-label cmm-checkbox"><input type="checkbox" class="cmm-checkbox-input" data-test="handle-consent-change" data-template-id="4Dp8M7ByFZC6bm" data-category="分析と統計"><div class="cmm-checkbox-fake"></div><div class="consent-item__information"><span class="consent-item__name">A/B-Testing</span><button type="button" class="consent-item__icon" data-test="toggle-consent-info-modal" aria-label="A/B-Testing"><cmm-icon class="hydrated"></cmm-icon></button></div></label></li></ul></li><li class="category-item" data-category-wrapper="マーケティング"><div class="category-select-all"><label class="category-label cmm-checkbox"><input type="checkbox" class="cmm-checkbox-input cmm-checkbox-input--category selected-partial" data-category="マーケティング" data-test="handle-category-change"><div class="cmm-checkbox-fake"></div>マーケティング</label></div><wb7-text class="category-description wb-text hydrated" size="m" tag="div">「MBJ」及び「MBAG」は、当ウェブサイトやソーシャルメディア上でお客様に合ったコンテンツや広告を表示するため、提携先各社のウェブ技術（Cookieを含みます）を利用しています。表示する内容はお客様の利用状況をもとに選ばれ、該当するサイト上に表示されます。</wb7-text><wb7-button class="toggle-button wb-button hydrated" data-test="toggle-category-details" aria-label="詳細を表示する" variant="tertiary" size="s"><cmm-icon class="hydrated"></cmm-icon></wb7-button><ul class="consent-list"><li class="consent-item"><label class="consent-label cmm-checkbox"><input type="checkbox" class="cmm-checkbox-input" data-test="handle-consent-change" data-template-id="OaeeURQfQ" data-category="マーケティング"><div class="cmm-checkbox-fake"></div><div class="consent-item__information"><span class="consent-item__name">YouTube Video | JP</span><button type="button" class="consent-item__icon" data-test="toggle-consent-info-modal" aria-label="YouTube Video | JP"><cmm-icon class="hydrated"></cmm-icon></button></div></label></li><li class="consent-item"><label class="consent-label cmm-checkbox"><input type="checkbox" class="cmm-checkbox-input" data-test="handle-consent-change" data-template-id="mzhCR6Q8-" data-category="マーケティング"><div class="cmm-checkbox-fake"></div><div class="consent-item__information"><span class="consent-item__name">Personalization Component</span><button type="button" class="consent-item__icon" data-test="toggle-consent-info-modal" aria-label="Personalization Component"><cmm-icon class="hydrated"></cmm-icon></button></div></label></li></ul></li><li class="category-item" data-category-wrapper="メルセデス・ベンツ関連会社へのデータ共有"><div class="category-select-all"><label class="category-label cmm-checkbox"><input type="checkbox" class="cmm-checkbox-input cmm-checkbox-input--category selected-all" data-category="メルセデス・ベンツ関連会社へのデータ共有" data-test="handle-category-change"><div class="cmm-checkbox-fake"></div>メルセデス・ベンツ関連会社へのデータ共有</label></div><wb7-text class="category-description wb-text hydrated" size="m" tag="div">お客様の同意内容に応じて、取得したデータを関連会社である「メルセデス・AMG GmbH」と共有する場合があります。共有したデータは、ご同意いただいた範囲でのみ利用されます。</wb7-text><wb7-button class="toggle-button wb-button hydrated" data-test="toggle-category-details" aria-label="詳細を表示する" variant="tertiary" size="s"><cmm-icon class="hydrated"></cmm-icon></wb7-button><ul class="consent-list"><li class="consent-item"><label class="consent-label cmm-checkbox"><input type="checkbox" class="cmm-checkbox-input" data-test="handle-consent-change" data-template-id="rxhQ9G4Ow0Qqu9" data-category="メルセデス・ベンツ関連会社へのデータ共有"><div class="cmm-checkbox-fake"></div><div class="consent-item__information"><span class="consent-item__name">Mercedes-Benz Data-Sharing</span><button type="button" class="consent-item__icon" data-test="toggle-consent-info-modal" aria-label="Mercedes-Benz Data-Sharing"><cmm-icon class="hydrated"></cmm-icon></button></div></label></li></ul></li></ul><wb7-button class="toggle-button wb-button hydrated" data-test="toggle-cookie-details" variant="tertiary" size="s"><cmm-icon aria-hidden="true" class="hydrated"></cmm-icon>閉じる</wb7-button><div class="button-group"><wb7-button class="button button--confirm-selection wb-button hydrated" data-test="handle-confirm-selection-button" variant="primary" size="s">設定の保存</wb7-button><wb7-button class="button button--accept-all wb-button hydrated" data-test="handle-accept-all-button" variant="primary" size="s">全てに同意</wb7-button></div></div></div></cmm-cookie-settings></div></div></cmm-cookie-banner>
+
+    <script>
+      /**
+       * 実サイトの `class="hydrated"` は Stencil が upgrade 済みであることの印で、
+       * `sc-<tag>` の scope class が無いことから shadow: true（open shadow root）と分かる。
+       * innerHTML の書き出しには shadow root が載らないので、ここで組み立て直す。
+       * ボタン部品は shadow の中に実装の `<button>` を持ち、文言は `<slot>` 越しに入る。
+       */
+      (function () {
+        var SHADOW_TEMPLATES = {
+          'wb7-button': '<style>button{all:unset;display:inline-flex;align-items:center;gap:6px;cursor:pointer;width:100%;justify-content:center}</style><button type="button" class="wb-button__inner"><slot></slot></button>',
+          'wb7-link': '<style>a{all:unset;cursor:pointer}</style><a class="wb-link__inner"><slot></slot></a>',
+          'wb7-text': '<slot></slot>',
+          'wb7-heading': '<slot></slot>',
+          'cmm-languages-list': '<slot></slot>',
+          'cmm-heading-section': '<slot></slot>',
+          'cmm-buttons-wrapper': '<slot></slot>',
+          'cmm-footer-links': '<slot></slot>',
+          'cmm-cookie-settings': '<slot></slot>',
+          'cmm-icon': '<span class="icon"></span>',
+        };
+        Object.keys(SHADOW_TEMPLATES).forEach(function (tag) {
+          var template = SHADOW_TEMPLATES[tag];
+          customElements.define(
+            tag,
+            class extends HTMLElement {
+              connectedCallback() {
+                if (this.shadowRoot) return;
+                this.attachShadow({ mode: 'open' }).innerHTML = template;
+              }
+            },
+          );
+        });
+      })();
+    </script>
+
+    <script>
+      (function () {
+        var log = document.getElementById('log');
+        function record(text) {
+          log.textContent += '[' + new Date().toLocaleTimeString('ja-JP') + '] ' + text + '\n';
+        }
+
+        var host = document.querySelector('cmm-cookie-banner');
+        // shadow 版とロジックを揃えるため、DOM を引く起点を scope にまとめる
+        var scope = host;
+        var content = scope.querySelector('.cmm-cookie-banner__content');
+        var settings = scope.querySelector('.cookie-settings-content');
+
+        function all(selector, root) {
+          return Array.prototype.slice.call((root || scope).querySelectorAll(selector));
+        }
+
+        /** ラベルの文字（チェックボックスの行名） */
+        function labelOf(input) {
+          var label = input.closest('label');
+          return label ? label.textContent.replace(/\s+/g, ' ').trim() : input.getAttribute('data-category') || '';
+        }
+
+        /**
+         * 実 HTML（innerHTML の書き出し）には checked が載らないので、CMP が付けている
+         * selected-all / selected-partial から生きた DOM の状態を復元する。
+         * selected-partial は「一部だけオン」なので、カテゴリはオン + 中間表示にし、
+         * 配下は先頭だけオンにする。
+         */
+        function initState() {
+          all('.category-item').forEach(function (item) {
+            var category = item.querySelector('.cmm-checkbox-input--category');
+            if (!category) return;
+            var children = all('.consent-item input[type="checkbox"]', item);
+            if (category.classList.contains('selected-all')) {
+              category.checked = true;
+              children.forEach(function (child) { child.checked = true; });
+            } else if (category.classList.contains('selected-partial')) {
+              category.checked = true;
+              category.indeterminate = true;
+              children.forEach(function (child, index) { child.checked = index === 0; });
+            }
+          });
+          syncCategories();
+        }
+
+        /** 配下の状態からカテゴリと「すべて選択する」を組み直す */
+        function syncCategories() {
+          var states = [];
+          all('.category-item').forEach(function (item) {
+            var category = item.querySelector('.cmm-checkbox-input--category');
+            var children = all('.consent-item input[type="checkbox"]', item);
+            if (!category || children.length === 0) return;
+            var on = children.filter(function (child) { return child.checked; }).length;
+            category.checked = on > 0;
+            category.indeterminate = on > 0 && on < children.length;
+            states.push(category.checked);
+          });
+          var selectAll = scope.querySelector('[data-test="handle-select-all-change"]');
+          if (!selectAll) return;
+          var onCount = states.filter(Boolean).length;
+          selectAll.checked = onCount > 0;
+          selectAll.indeterminate = onCount > 0 && onCount < states.length;
+        }
+
+        scope.addEventListener(
+          'click',
+          function (event) {
+            var el = event.target.closest('wb7-button, wb7-link, button, a, [role="button"], input');
+            if (!el || el.type === 'checkbox') return;
+            var text = (el.textContent || el.getAttribute('aria-label') || '').replace(/\s+/g, ' ').trim();
+            record('クリック: ' + text);
+          },
+          true,
+        );
+
+        // チェックの変化を記録する。カテゴリを外すと配下の個別チェックも外れる（実サイトと同じ）
+        settings.addEventListener('change', function (event) {
+          var input = event.target;
+          if (!input || input.type !== 'checkbox') return;
+          record('チェック: ' + labelOf(input) + ' -> ' + (input.checked ? 'on' : 'off'));
+
+          if (input.getAttribute('data-test') === 'handle-select-all-change') {
+            input.indeterminate = false;
+            all('.cmm-checkbox-input').forEach(function (other) {
+              if (other === input || other.disabled) return;
+              other.checked = input.checked;
+              other.indeterminate = false;
+            });
+            return;
+          }
+          if (input.classList.contains('cmm-checkbox-input--category')) {
+            input.indeterminate = false;
+            var item = input.closest('.category-item');
+            if (item) {
+              all('.consent-item input[type="checkbox"]', item).forEach(function (child) {
+                if (child.disabled) return;
+                child.checked = input.checked;
+              });
+            }
+          }
+          syncCategories();
+        });
+
+        function closeBanner(reason) {
+          record(reason);
+          host.remove();
+        }
+
+        scope.addEventListener('click', function (event) {
+          var button = event.target.closest('wb7-button');
+          if (!button) return;
+          var action = button.getAttribute('data-test');
+
+          if (action === 'toggle-cookie-details') {
+            var expanded = content.classList.toggle('settings-expanded');
+            record(expanded ? '設定パネルを開きました' : '設定パネルを閉じました');
+            return;
+          }
+          if (action === 'toggle-category-details') {
+            var item = button.closest('.category-item');
+            if (!item) return;
+            var open = item.classList.toggle('details-expanded');
+            button.setAttribute('aria-label', open ? '詳細を隠す' : '詳細を表示する');
+            return;
+          }
+          if (action === 'handle-accept-all-button') {
+            all('.cmm-checkbox-input').forEach(function (input) {
+              if (input.disabled) return;
+              input.checked = true;
+              input.indeterminate = false;
+            });
+            closeBanner('全てに同意してバナーを閉じました');
+            return;
+          }
+          if (action === 'handle-confirm-selection-button') {
+            var categories = [];
+            all('.cmm-checkbox-input--category').forEach(function (input) {
+              if (input.getAttribute('data-test') === 'handle-select-all-change') return;
+              if (input.checked) categories.push(labelOf(input));
+            });
+            var services = [];
+            all('.consent-item input[type="checkbox"]').forEach(function (input) {
+              if (input.checked) services.push(labelOf(input));
+            });
+            record('設定の保存 -> 残ったカテゴリ: ' + (categories.join(' / ') || 'なし'));
+            record('設定の保存 -> 残った個別項目: ' + (services.join(' / ') || 'なし'));
+            closeBanner('バナーとパネルを閉じました');
+          }
+        });
+
+        initState();
+        record('待機中。「設定」→ カテゴリのチェックを外す →「設定の保存」で成功です。');
+      })();
+    </script>
+  </body>
+</html>

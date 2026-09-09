@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>fixture: 拒否済みの案内バナー</title>
+    <script src="/content.js"></script>
+    <style>
+      body { margin: 0; font: 15px/1.8 system-ui, -apple-system, 'Hiragino Sans', sans-serif; }
+      main { padding: 24px; max-width: 720px; }
+      pre { background: #f3f4f6; padding: 12px; border-radius: 8px; min-height: 3em; }
+      .dcr-17eqobb {
+        position: fixed; left: 0; right: 0; bottom: 0; z-index: 10;
+        display: flex; gap: 16px; align-items: center; justify-content: space-between;
+        padding: 16px 24px; background: #052962; color: #fff;
+      }
+      .dcr-17eqobb p { margin: 0; }
+      .dcr-17eqobb button {
+        padding: 8px 16px; border: 1px solid #fff; border-radius: 999px;
+        background: transparent; color: #fff; font-size: 14px; cursor: pointer;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>拒否済みの案内バナー</h1>
+      <p>
+        実サイト（theguardian.com）の構造を写したもの。同意を求める画面ではなく
+        <strong>すでに拒否したことを伝える案内</strong>なので、reject / accept のどちらでも
+        何も押さず、非表示にもせず、未処理としても報告しません。
+      </p>
+      <pre id="log"></pre>
+    </main>
+
+    <aside class="dcr-17eqobb">
+      <p>You’ve chosen to reject third-party cookies while browsing our site.</p>
+      <button>Collapse banner</button>
+    </aside>
+
+    <script>
+      (function () {
+        var log = document.getElementById('log');
+        function record(text) {
+          log.textContent += '[' + new Date().toLocaleTimeString('ja-JP') + '] ' + text + '\n';
+        }
+        document.addEventListener(
+          'click',
+          function (event) {
+            var el = event.target.closest('button, a, [role="button"], input');
+            if (el) record('クリック（本来は起きないはず）: ' + (el.textContent || el.value || '').trim());
+          },
+          true,
+        );
+        var notice = document.querySelector('.dcr-17eqobb');
+        notice.querySelector('button').addEventListener('click', function () {
+          record('案内を折りたたみました（本来は起きないはず）');
+          notice.remove();
+        });
+      })();
+    </script>
+  </body>
+</html>

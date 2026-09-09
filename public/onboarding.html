@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Cookie Autopilot へようこそ</title>
+    <!-- Gen Interface JP — 既存プロダクトで使っている CDN URL をそのまま使用 -->
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/gen-interface-jp@latest/cdn/400.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/gen-interface-jp@latest/cdn/500.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/gen-interface-jp@latest/cdn/600.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/gen-interface-jp@latest/cdn/700.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/gen-interface-jp@latest/cdn/display-700.css" />
+    <link rel="stylesheet" href="theme.css" />
+    <link rel="stylesheet" href="onboarding.css" />
+  </head>
+  <body>
+    <main class="onboarding">
+      <div class="onboarding-card">
+        <p id="extension-notice" class="notice" hidden>
+          拡張として読み込むと有効になります。ここでは見た目だけ確認できます。
+        </p>
+
+        <header class="onboarding-header">
+          <h1>Cookie Autopilot へようこそ</h1>
+          <p class="onboarding-lead">
+            サイトを開いたときに出る Cookie の同意画面に、あなたの代わりに答えます。
+          </p>
+        </header>
+
+        <section class="onboarding-section" aria-labelledby="preset-heading">
+          <h2 id="preset-heading" class="onboarding-section-title">どこまで許可しますか？</h2>
+          <p id="custom-notice" class="notice" hidden>
+            現在は詳細設定で個別に調整されています。ここで選ぶと上書きされます。
+          </p>
+          <div id="preset-picker-slot"></div>
+        </section>
+
+        <section class="onboarding-section" aria-labelledby="category-heading">
+          <h2 id="category-heading" class="onboarding-section-title">それぞれの Cookie は何をするの？</h2>
+          <div id="category-table-slot"></div>
+        </section>
+
+        <section class="onboarding-notes">
+          <p id="note-always-rejected"></p>
+          <p id="note-granular-only"></p>
+        </section>
+
+        <footer class="onboarding-footer">
+          <div id="hud" class="hud hud-fixed-center" role="status" aria-live="assertive" hidden></div>
+          <div id="onboarding-actions" class="onboarding-actions">
+            <button type="button" id="start-btn" class="push-btn push-btn-lg push-btn-dark">この設定で始める</button>
+          </div>
+          <div id="onboarding-done" class="onboarding-done" hidden>
+            <h2 id="onboarding-done-heading" class="onboarding-done-heading" role="status">設定しました</h2>
+            <p class="onboarding-done-message">Cookie の同意画面が出るサイトを開いてみてください。</p>
+            <p id="onboarding-done-summary" class="onboarding-done-summary"></p>
+            <p id="onboarding-done-countdown" class="onboarding-done-countdown" hidden></p>
+            <div id="onboarding-done-actions" class="onboarding-done-actions">
+              <button type="button" id="close-now-btn" class="push-btn push-btn-lg push-btn-dark" hidden>
+                今すぐ閉じる
+              </button>
+              <div class="onboarding-done-secondary-actions">
+                <button type="button" id="keep-open-btn" class="btn btn-ghost" hidden>閉じない</button>
+                <button type="button" id="open-options-btn" class="btn btn-ghost">詳細設定を開く</button>
+              </div>
+            </div>
+          </div>
+        </footer>
+      </div>
+    </main>
+    <script src="onboarding.js"></script>
+  </body>
+</html>

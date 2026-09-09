@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>fixture: shadow DOM の中のバナー</title>
+    <script src="/content.js"></script>
+    <style>
+      body { margin: 0; font: 15px/1.8 system-ui, -apple-system, 'Hiragino Sans', sans-serif; }
+      main { padding: 24px; max-width: 720px; }
+      pre { background: #f3f4f6; padding: 12px; border-radius: 8px; min-height: 3em; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>shadow DOM の中のバナー</h1>
+      <p>open な shadow root の中にバナーがあります。deepQuery で横断できることの確認用。</p>
+      <pre id="log"></pre>
+    </main>
+
+    <div id="fx-shadow-host"></div>
+
+    <script>
+      (function () {
+        var log = document.getElementById('log');
+        function record(text) {
+          log.textContent += '[' + new Date().toLocaleTimeString('ja-JP') + '] ' + text + '\n';
+        }
+        var host = document.getElementById('fx-shadow-host');
+        var shadow = host.attachShadow({ mode: 'open' });
+        shadow.innerHTML = [
+          '<style>',
+          '.fx-cookie-box { position: fixed; left: 24px; bottom: 24px; width: 360px; padding: 20px;',
+          '  background: #1f2937; color: #f9fafb; border-radius: 12px; }',
+          '.fx-cookie-box button { margin-right: 8px; padding: 10px 16px; border: 0; border-radius: 8px; cursor: pointer; }',
+          '</style>',
+          '<div class="fx-cookie-box" part="box">',
+          '  <p>We use cookies to improve your experience.</p>',
+          '  <button class="fx-accept">Accept all</button>',
+          '  <button class="fx-reject">Reject all</button>',
+          '  <button class="fx-settings">Cookie settings</button>',
+          '</div>',
+        ].join('\n');
+
+        shadow.addEventListener('click', function (event) {
+          var el = event.composedPath()[0];
+          if (!el || el.tagName !== 'BUTTON') return;
+          record('クリック: ' + el.textContent.trim());
+          if (el.classList.contains('fx-settings')) return;
+          record('バナーを閉じました');
+          var box = shadow.querySelector('.fx-cookie-box');
+          if (box) box.remove();
+        });
+      })();
+    </script>
+  </body>
+</html>

@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <title>fixture: 許可 / 拒否のラジオで選ぶ設定パネル</title>
+    <script src="/content.js"></script>
+    <style>
+      body { margin: 0; font: 15px/1.8 system-ui, -apple-system, 'Hiragino Sans', sans-serif; }
+      main { padding: 24px; max-width: 720px; }
+      pre { background: #f3f4f6; padding: 12px; border-radius: 8px; min-height: 3em; white-space: pre-wrap; }
+      .fx-cookie-bar {
+        position: fixed; left: 0; right: 0; bottom: 0; z-index: 10;
+        display: flex; gap: 12px; align-items: center; flex-wrap: wrap;
+        padding: 20px 24px; background: #111827; color: #f9fafb;
+      }
+      .fx-cookie-bar p { margin: 0; flex: 1 1 320px; }
+      .fx-cookie-bar button { padding: 10px 16px; border: 0; border-radius: 8px; font-size: 14px; cursor: pointer; }
+      .fx-agree { background: #2563eb; color: #fff; }
+      .fx-config { background: #e5e7eb; color: #111827; }
+      .fx-cookie-prefs {
+        position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 20;
+        width: 560px; max-width: calc(100vw - 48px); padding: 24px;
+        background: #fff; border-radius: 12px; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      }
+      .fx-cookie-prefs[hidden] { display: none; }
+      .fx-cookie-prefs h2 { margin: 0 0 12px; font-size: 18px; }
+      .fx-cookie-prefs ul { list-style: none; margin: 0 0 20px; padding: 0; }
+      .fx-row {
+        display: flex; gap: 16px; align-items: center; justify-content: space-between;
+        padding: 10px 0; border-top: 1px solid #e5e7eb;
+      }
+      .fx-row .fx-name { font-weight: 600; }
+      .fx-row .fx-choices { display: flex; gap: 12px; white-space: nowrap; }
+      .fx-row label { display: flex; gap: 4px; align-items: center; font-size: 14px; }
+      .fx-cookie-prefs button { padding: 10px 16px; border: 0; border-radius: 8px; background: #111827; color: #fff; cursor: pointer; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>許可 / 拒否のラジオで選ぶ設定パネル</h1>
+      <p>
+        カテゴリごとの選択がチェックボックスではなく<strong>「許可 / 拒否」のラジオ 2 択</strong>で
+        出るタイプの設定パネルです。reject モードでは「設定」を押したあと、
+        <strong>設定の記憶は「許可」のまま、分析と広告は「拒否」を選んで「選択を保存」</strong>を押します
+        （既定の「ほどよく守る」は設定の記憶＝A だけ許可）。
+      </p>
+      <p>
+        必須（常に有効・操作できない）と、<strong>選択肢が 3 つある「ソーシャル連携」には触りません</strong>
+        （どちらを選べば拒否なのかを決められないため）。
+        <code>?mode=accept</code> を付けると「全てに同意する」が押されます。
+      </p>
+      <pre id="log"></pre>
+    </main>
+
+    <div class="fx-cookie-bar" id="fx-cookie-bar">
+      <p>当サイトでは Cookie を使用しています。用途ごとの設定は「設定」からご確認ください。</p>
+      <button class="fx-agree">全てに同意する</button>
+      <button class="fx-config">設定</button>
+    </div>
+
+    <div class="fx-cookie-prefs" id="fx-cookie-prefs" role="dialog" aria-modal="true" hidden>
+      <h2>Cookie の設定</h2>
+      <ul>
+        <li class="fx-row">
+          <span class="fx-name">必須 Cookie（常に有効）</span>
+          <span class="fx-choices">
+            <label><input type="radio" name="essential" checked disabled /> 許可</label>
+            <label><input type="radio" name="essential" disabled /> 拒否</label>
+          </span>
+        </li>
+        <li class="fx-row">
+          <span class="fx-name">設定の記憶</span>
+          <span class="fx-choices">
+            <label><input type="radio" name="pref" checked /> 許可</label>
+            <label><input type="radio" name="pref" /> 拒否</label>
+          </span>
+        </li>
+        <li class="fx-row">
+          <span class="fx-name">分析 Cookie</span>
+          <span class="fx-choices">
+            <label><input type="radio" name="analytics" checked /> 許可</label>
+            <label><input type="radio" name="analytics" /> 拒否</label>
+          </span>
+        </li>
+        <li class="fx-row">
+          <span class="fx-name">広告 Cookie</span>
+          <span class="fx-choices">
+            <label><input type="radio" name="ads" checked /> 許可</label>
+            <label><input type="radio" name="ads" /> 拒否</label>
+          </span>
+        </li>
+        <li class="fx-row">
+          <span class="fx-name">ソーシャル連携</span>
+          <span class="fx-choices">
+            <label><input type="radio" name="social" checked /> 許可</label>
+            <label><input type="radio" name="social" /> 一部のみ</label>
+            <label><input type="radio" name="social" /> 拒否</label>
+          </span>
+        </li>
+      </ul>
+      <button class="fx-save">選択を保存</button>
+    </div>
+
+    <script>
+      (function () {
+        var log = document.getElementById('log');
+        function record(text) {
+          log.textContent += '[' + new Date().toLocaleTimeString('ja-JP') + '] ' + text + '\n';
+        }
+        document.addEventListener(
+          'click',
+          function (event) {
+            var el = event.target.closest('button, a, [role="button"], input');
+            if (el && el.type !== 'checkbox' && el.type !== 'radio') {
+              record('クリック: ' + (el.textContent || el.value || '').trim());
+            }
+          },
+          true,
+        );
+
+        var bar = document.getElementById('fx-cookie-bar');
+        var prefs = document.getElementById('fx-cookie-prefs');
+
+        function rowName(input) {
+          var row = input.closest('.fx-row');
+          return row ? row.querySelector('.fx-name').textContent.trim() : input.name;
+        }
+
+        bar.querySelector('.fx-config').addEventListener('click', function () {
+          prefs.hidden = false;
+          record('設定パネルを開きました');
+        });
+        bar.querySelector('.fx-agree').addEventListener('click', function () {
+          record('全てに同意してバナーを閉じました');
+          bar.remove();
+          prefs.remove();
+        });
+
+        prefs.addEventListener('change', function (event) {
+          var input = event.target;
+          if (input.type !== 'radio') return;
+          var label = input.closest('label');
+          record('ラジオ: ' + rowName(input) + ' -> ' + (label ? label.textContent.trim() : input.value));
+        });
+        prefs.querySelector('.fx-save').addEventListener('click', function () {
+          var allowed = [];
+          prefs.querySelectorAll('.fx-row').forEach(function (row) {
+            var checked = row.querySelector('input[type="radio"]:checked');
+            var label = checked ? checked.closest('label') : null;
+            allowed.push(row.querySelector('.fx-name').textContent.trim() + '=' + (label ? label.textContent.trim() : '-'));
+          });
+          record('選択を保存 -> ' + allowed.join(' / '));
+          record('バナーとパネルを閉じました');
+          prefs.remove();
+          bar.remove();
+        });
+      })();
+    </script>
+  </body>
+</html>

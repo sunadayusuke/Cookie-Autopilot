@@ -1,0 +1,218 @@
+/* options 固有のレイアウト（docs/DESIGN.md §3「options」、docs/SPEC.md §14.5）。
+   トークン・共通コンポーネント（Card/PresetCard/Chip/ToggleSwitch/Input/Badge/HUD 等）は
+   theme.css を参照。幅 720 中央、bg --bg-page。ライトモード固定。 */
+
+body {
+  display: flex;
+  justify-content: center;
+  min-height: 100vh;
+  padding: var(--space-6) var(--space-5);
+  background: var(--bg-page);
+}
+
+.options {
+  width: 100%;
+  max-width: 720px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.options-header h1 {
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--fg);
+  margin-bottom: var(--space-3);
+}
+
+/* ---- カードの見出し行（見出し + 状態 Badge。「どこまで許可しますか？」のカスタム表示など） ---- */
+
+.card-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+/* ---- カード内の小見出し（プリセットカードとカテゴリ表の区切り。
+   DESIGN.md §2「区切り」= カード内は 1px --hairline） ---- */
+
+.card-subtitle {
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--hairline);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--fg);
+}
+
+/* ---- カード内の注意書きなど、ラベル無しの補足ブロック ---- */
+
+.field-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.field-note {
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--fg-muted);
+}
+
+/* 判定ルールの最終更新（field-note より一段大きい本文相当） */
+#com-status {
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--fg-muted);
+}
+
+.option-list {
+  display: flex;
+  flex-direction: column;
+}
+
+/* ---- ラジオ行（断れなかったとき）: ラベル + 説明を縦積み、ネイティブ radio は視認可のまま restyle ---- */
+
+.radio-row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-2-5) 0;
+  cursor: pointer;
+}
+
+.radio-row-input {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  margin-top: 2px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.radio-row-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.radio-row-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--fg);
+}
+
+.radio-row-note {
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--fg-muted);
+}
+
+/* ---- コントロール行（バッジ表示・監視秒数・デバッグ・はじめの設定）: ラベル + 右寄せコントロール ---- */
+
+.option-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  min-height: 40px;
+  padding: var(--space-2) 0;
+}
+
+.option-row-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 14px;
+  color: var(--fg);
+  overflow-wrap: anywhere;
+}
+
+.input-number {
+  width: 88px;
+  flex: none;
+  text-align: right;
+}
+
+/* カテゴリ表（「どこまで許可しますか？」カードの下段）の見た目は theme.css に
+   共通化した（src/ui/categoryTable.ts が onboarding とも共用する）。 */
+
+/* ---- サイトごとの設定・教えたボタンの一覧 ---- */
+
+.entry-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.entry-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) 0;
+}
+
+.entry-main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.entry-main-top {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.entry-host {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--fg);
+  overflow-wrap: anywhere;
+}
+
+.entry-detail {
+  font-size: 12px;
+  color: var(--fg-muted);
+  overflow-wrap: anywhere;
+}
+
+.entry-code {
+  display: inline-block;
+  max-width: 100%;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--fg-secondary);
+  background: var(--wb-50);
+  border-radius: var(--radius-xs);
+  padding: 2px 6px;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+.entry-delete {
+  flex: none;
+}
+
+.empty-hint {
+  font-size: 13px;
+  color: var(--fg-muted);
+}
+
+/* ---- バックアップ ---- */
+
+.io-row {
+  display: flex;
+  gap: var(--space-3);
+}
+
+.btn-file {
+  display: inline-flex;
+  align-items: center;
+}
+
+.btn-file input[type='file'] {
+  display: none;
+}

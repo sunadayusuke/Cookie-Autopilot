@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>fixture: role なし div ボタンの英語バナー</title>
+    <script src="/content.js"></script>
+    <style>
+      body { margin: 0; font: 15px/1.8 system-ui, -apple-system, 'Hiragino Sans', sans-serif; }
+      main { padding: 24px; max-width: 720px; }
+      pre { background: #f3f4f6; padding: 12px; border-radius: 8px; min-height: 3em; }
+      .fx-cc-bar {
+        position: fixed; left: 0; right: 0; bottom: 0; z-index: 10;
+        display: flex; gap: 12px; align-items: center; flex-wrap: wrap;
+        padding: 20px 24px; background: #111827; color: #f9fafb;
+      }
+      .fx-cc-bar p { margin: 0; flex: 1 1 320px; }
+      .fx-cc-actions { display: flex; gap: 12px; }
+      .cc-btn { padding: 10px 16px; border-radius: 8px; font-size: 14px; cursor: pointer; user-select: none; }
+      .cc-allow { background: #2563eb; color: #fff; }
+      .cc-deny { background: #e5e7eb; color: #111827; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>role なし div ボタンの英語バナー</h1>
+      <p>
+        ボタンが <code>&lt;div class="cc-btn"&gt;</code> で、<code>button</code> タグも
+        <code>role="button"</code> も持ちません。容器の中に限って class から候補にします。
+      </p>
+      <p><code>?mode=accept</code> を付けると accept モードになります。</p>
+      <pre id="log"></pre>
+    </main>
+
+    <div class="fx-cc-bar" id="fx-cc-bar">
+      <p>We use cookies to personalise content and analyse our traffic.</p>
+      <div class="fx-cc-actions">
+        <div class="cc-btn cc-allow">Allow cookies</div>
+        <div class="cc-btn cc-deny">Decline</div>
+      </div>
+    </div>
+
+    <script>
+      (function () {
+        var log = document.getElementById('log');
+        function record(text) {
+          log.textContent += '[' + new Date().toLocaleTimeString('ja-JP') + '] ' + text + '\n';
+        }
+        document.addEventListener(
+          'click',
+          function (event) {
+            var el = event.target.closest('button, a, [role="button"], input, .cc-btn');
+            if (el) record('クリック: ' + (el.textContent || el.value || '').trim());
+          },
+          true,
+        );
+        var banner = document.getElementById('fx-cc-bar');
+        banner.addEventListener('click', function (event) {
+          if (!event.target.closest('.cc-btn')) return;
+          record('バナーを閉じました');
+          banner.remove();
+        });
+      })();
+    </script>
+  </body>
+</html>

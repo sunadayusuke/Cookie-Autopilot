@@ -1,0 +1,146 @@
+<!doctype html>
+<!--
+  実サイト巡回・第2巡（docs/real-site-audit-2026-09-07-round2.md の ROUND2-002）の
+  ログと DOM 断片から**組み立てた再現**。ブラウジングポリシーで ibm.com を開けないため、
+  実 HTML そのものではない（設定パネルの中身は「最も確からしい仮説」）。
+
+  保存ボタンは TrustArc 日本語版の実文言どおり「設定を送信」。`送信` は危険文脈語だが、
+  panel.ts の abortReason() は PANEL_SUBMIT_WORDS に一致する言い回しだけを取り除いてから
+  危険文脈語を判定するので、このボタンの存在だけを理由にパネルを中止することはない
+  （docs/SPEC.md の「実サイト巡回・第2巡の反映」参照）。
+-->
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <title>fixture: TrustArc（拒否ボタンが無く、設定導線が最小容器の外にある）</title>
+    <script src="/content.js"></script>
+    <style>
+      body { margin: 0; font: 15px/1.8 system-ui, -apple-system, 'Hiragino Sans', sans-serif; }
+      main { padding: 24px; max-width: 720px; }
+      pre { background: #f3f4f6; padding: 12px; border-radius: 8px; min-height: 3em; }
+      #truste-consent-track {
+        position: fixed; left: 0; right: 0; bottom: 0; z-index: 10;
+        display: flex; gap: 16px; align-items: center; flex-wrap: wrap;
+        padding: 20px 24px; background: #161616; color: #f4f4f4;
+      }
+      #truste-consent-text { flex: 1 1 420px; font-size: 13px; line-height: 1.7; }
+      #truste-button-track { display: flex; gap: 12px; align-items: center; }
+      #truste-consent-track button { padding: 10px 16px; border: 0; font-size: 14px; cursor: pointer; }
+      #truste-consent-button { background: #0f62fe; color: #fff; }
+      #truste-show-consent { background: #393939; color: #f4f4f4; }
+      #truste-cookie-link { color: #78a9ff; }
+      #truste-consent-panel {
+        position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 20;
+        width: 520px; max-width: calc(100vw - 48px); padding: 24px;
+        background: #fff; color: #161616; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      }
+      #truste-consent-panel[hidden] { display: none; }
+      #truste-consent-panel h2 { margin: 0 0 12px; font-size: 18px; }
+      #truste-consent-panel ul { list-style: none; margin: 0 0 20px; padding: 0; }
+      #truste-consent-panel li { padding: 10px 0; border-top: 1px solid #e0e0e0; }
+      #truste-consent-panel label { display: flex; gap: 8px; align-items: center; font-weight: 600; }
+      #truste-consent-panel .note { margin: 4px 0 0 24px; font-size: 13px; color: #6f6f6f; }
+      #truste-consent-panel button { padding: 10px 16px; border: 0; background: #161616; color: #fff; cursor: pointer; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>TrustArc（拒否ボタンが無く、設定導線が最小容器の外にある）</h1>
+      <p>
+        実サイト（ibm.com）のログと DOM 断片から組み立てた再現です。即決 CMP 表は
+        <code>#truste-consent-track</code> を CMP の容器として見つけますが、拒否セレクタ
+        <code>#truste-consent-required</code> は存在しません。ヒューリスティックに任せると
+        <strong>中の最小容器 <code>#truste-consent-text</code></strong> が採用され、設定導線
+        （<code>オプションの続き</code>）が容器の外に出てしまいます。
+      </p>
+      <p>
+        正解は、即決 CMP 表が名指しした容器を中の断片より優先して採用し、「オプションの続き」で
+        設定パネルを開き、分析と広告のチェックを外して保存することです。
+        <code>すべて承諾</code> は reject モードでは絶対に押しません。
+      </p>
+      <pre id="log"></pre>
+    </main>
+
+    <div id="truste-consent-track">
+      <div id="truste-consent-text">
+        当サイトでは Cookie を利用して、サイトの品質向上や利用状況の分析、お客様に合わせた
+        コンテンツの表示を行っています。用途ごとの選択は「オプションの続き」からご確認いただけます。
+        <button id="truste-consent-button" type="button">すべて承諾</button>
+      </div>
+      <div id="truste-button-track">
+        <a id="truste-cookie-link" href="/privacy">Cookie設定</a>
+        <button id="truste-show-consent" type="button">オプションの続き</button>
+      </div>
+    </div>
+
+    <div id="truste-consent-panel" role="dialog" aria-modal="true" hidden>
+      <h2>Cookie の設定</h2>
+      <ul>
+        <li>
+          <label><input type="checkbox" id="truste-required" checked disabled /> 必須Cookie（常に有効）</label>
+          <p class="note">サイトを動かすために欠かせないものです。</p>
+        </li>
+        <li>
+          <label><input type="checkbox" id="truste-functional" checked /> 機能性Cookie</label>
+          <p class="note">選択いただいた言語や地域を次回も記憶します。</p>
+        </li>
+        <li>
+          <label><input type="checkbox" id="truste-analytics" checked /> 分析Cookie</label>
+          <p class="note">どのページがよく閲覧されているかを集計します。</p>
+        </li>
+        <li>
+          <label><input type="checkbox" id="truste-advertising" checked /> 広告Cookie</label>
+          <p class="note">関心に応じた広告の配信に利用します。</p>
+        </li>
+      </ul>
+      <button id="truste-submit-prefs" type="button">設定を送信</button>
+    </div>
+
+    <script>
+      (function () {
+        var log = document.getElementById('log');
+        function record(text) {
+          log.textContent += '[' + new Date().toLocaleTimeString('ja-JP') + '] ' + text + '\n';
+        }
+        document.addEventListener(
+          'click',
+          function (event) {
+            var el = event.target.closest('button, a, [role="button"], input');
+            if (el && el.type !== 'checkbox') record('クリック: ' + (el.textContent || el.value || '').trim());
+          },
+          true,
+        );
+
+        var track = document.getElementById('truste-consent-track');
+        var panel = document.getElementById('truste-consent-panel');
+
+        document.getElementById('truste-show-consent').addEventListener('click', function () {
+          panel.hidden = false;
+          record('設定パネルを開きました');
+        });
+        document.getElementById('truste-consent-button').addEventListener('click', function () {
+          record('すべて承諾してバナーを閉じました');
+          track.remove();
+          panel.remove();
+        });
+
+        panel.addEventListener('change', function (event) {
+          var input = event.target;
+          if (!input.id) return;
+          var label = input.closest('label');
+          record('トグル: ' + (label ? label.textContent.trim() : input.id) + ' -> ' + (input.checked ? 'on' : 'off'));
+        });
+        document.getElementById('truste-submit-prefs').addEventListener('click', function () {
+          var on = [];
+          panel.querySelectorAll('input[type="checkbox"]').forEach(function (input) {
+            if (input.checked) on.push(input.closest('label').textContent.trim());
+          });
+          record('設定を保存 -> 残ったのは: ' + on.join(' / '));
+          record('バナーとパネルを閉じました');
+          panel.remove();
+          track.remove();
+        });
+      })();
+    </script>
+  </body>
+</html>

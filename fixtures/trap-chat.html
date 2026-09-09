@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>fixture: Cookie バナーではない固定 UI</title>
+    <script src="/content.js"></script>
+    <style>
+      body { margin: 0; font: 15px/1.8 system-ui, -apple-system, 'Hiragino Sans', sans-serif; }
+      main { padding: 24px 24px 120px; max-width: 720px; }
+      pre { background: #f3f4f6; padding: 12px; border-radius: 8px; min-height: 3em; }
+      .site-header {
+        position: sticky; top: 0; z-index: 5; display: flex; gap: 16px; align-items: center;
+        padding: 16px 24px; background: #111827; color: #f9fafb;
+      }
+      .site-header a { color: #93c5fd; }
+      .chat-widget {
+        position: fixed; right: 24px; bottom: 24px; width: 320px; padding: 20px;
+        background: #fff; border: 1px solid #d1d5db; border-radius: 12px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+      }
+      .chat-widget textarea { width: 100%; height: 64px; box-sizing: border-box; }
+      .chat-widget button { margin-top: 12px; padding: 10px 16px; border: 0; border-radius: 8px; background: #2563eb; color: #fff; cursor: pointer; }
+    </style>
+  </head>
+  <body>
+    <header class="site-header">
+      <strong>Example Inc.</strong>
+      <nav><a href="/privacy">Privacy</a> <a href="#">Menu</a></nav>
+    </header>
+
+    <main>
+      <h1>Cookie バナーではない固定 UI</h1>
+      <p>
+        固定チャットウィジェットと sticky ヘッダーがあります。どちらも Cookie バナーではないので、
+        <strong>何も押されず、非表示にもされない</strong>のが正解です（reject / accept どちらでも）。
+      </p>
+      <pre id="log"></pre>
+    </main>
+
+    <div class="chat-widget" id="chat-widget">
+      <p>We are committed to protecting your privacy.</p>
+      <textarea placeholder="How can we help?"></textarea>
+      <button type="button">Send us a message</button>
+    </div>
+
+    <script>
+      (function () {
+        var log = document.getElementById('log');
+        function record(text) {
+          log.textContent += '[' + new Date().toLocaleTimeString('ja-JP') + '] ' + text + '\n';
+        }
+        document.addEventListener(
+          'click',
+          function (event) {
+            var el = event.target.closest('button, a, [role="button"], input');
+            if (el) record('クリック（本来は起きないはず）: ' + (el.textContent || el.value || '').trim());
+          },
+          true,
+        );
+        record('待機中。チャットもヘッダーも消えなければ成功です。');
+      })();
+    </script>
+  </body>
+</html>

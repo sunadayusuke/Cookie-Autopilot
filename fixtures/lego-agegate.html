@@ -1,0 +1,80 @@
+<!doctype html>
+<!--
+  実サイト巡回・第2巡（docs/real-site-audit-2026-09-07-round2.md の ROUND2-003）で
+  記録した DOM の**構造を写したもの**。ブラウジングポリシーで lego.com を開けないため、
+  実 HTML そのものではなくレポートの断片（dialog の class・ボタン文言）からの再現。
+-->
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <title>fixture: 入口選択ダイアログ（Cookie 同意画面ではない）</title>
+    <script src="/content.js"></script>
+    <style>
+      body { margin: 0; font: 15px/1.8 system-ui, -apple-system, 'Hiragino Sans', sans-serif; }
+      main { padding: 24px; max-width: 720px; }
+      pre { background: #f3f4f6; padding: 12px; border-radius: 8px; min-height: 3em; }
+      /* jsdom は dialog の UA スタイル（position / display）を持たないので明示する */
+      .AgeGate_age-gate__wrapper__ph949 {
+        display: block; position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%);
+        z-index: 20; width: 520px; max-width: calc(100vw - 48px); padding: 24px;
+        border: 0; background: #fff; color: #111827; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      }
+      .AgeGate_age-gate__wrapper__ph949 h2 { margin: 0 0 8px; font-size: 20px; }
+      .AgeGate_age-gate__wrapper__ph949 section { padding: 12px 0; border-top: 1px solid #e5e7eb; }
+      .AgeGate_age-gate__wrapper__ph949 button {
+        padding: 10px 16px; border: 0; background: #111827; color: #fff; font-size: 14px; cursor: pointer;
+      }
+      .AgeGate_age-gate__note { font-size: 13px; line-height: 1.7; color: #6b7280; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>入口選択ダイアログ（Cookie 同意画面ではない）</h1>
+      <p>
+        実サイト（lego.com）の構造を写したもの。通常サイトとプレイゾーンのどちらに入るかを選ぶ
+        <strong>入口ゲート</strong>で、Cookie 使用についての説明文が同じダイアログに入っています。
+        決定ボタンは「続ける」しか無いため、Cookie 同意画面として扱うと
+        <code>no-reject</code> の未処理サイトとして報告されてしまいます。
+      </p>
+      <p>
+        正解は、<code>age-gate</code> のような入口ゲートの属性を持つ要素を容器にしないことです。
+        reject / accept のどちらでも<strong>何も押さず・消さず・検出もしません</strong>。
+      </p>
+      <pre id="log"></pre>
+    </main>
+
+    <dialog class="AgeGate_age-gate__wrapper__ph949" open>
+      <section>
+        <h2>LEGO.comに入ります</h2>
+        <p>ショップや商品情報、組み立て説明書はこちらからご覧いただけます。</p>
+        <button type="button">続ける</button>
+      </section>
+      <section>
+        <h2>プレイゾーン</h2>
+        <p>ゲームや動画を楽しめる、お子様向けのページです。</p>
+        <a href="/kids">プレイを楽しむ</a>
+      </section>
+      <p class="AgeGate_age-gate__note">
+        当サイトでは Cookie を利用して、サイトの使いやすさの向上とコンテンツの表示に役立てています。
+        どちらを選んでも、その選択を覚えておくための Cookie が保存されます。
+      </p>
+    </dialog>
+
+    <script>
+      (function () {
+        var log = document.getElementById('log');
+        function record(text) {
+          log.textContent += '[' + new Date().toLocaleTimeString('ja-JP') + '] ' + text + '\n';
+        }
+        document.addEventListener(
+          'click',
+          function (event) {
+            var el = event.target.closest('button, a, [role="button"], input');
+            if (el) record('クリック（本来は起きないはず）: ' + (el.textContent || el.value || '').trim());
+          },
+          true,
+        );
+      })();
+    </script>
+  </body>
+</html>

@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>fixture: Necessary cookies only（role="dialog"）</title>
+    <script src="/content.js"></script>
+    <style>
+      body { margin: 0; font: 15px/1.8 system-ui, -apple-system, 'Hiragino Sans', sans-serif; }
+      main { padding: 24px; max-width: 720px; }
+      pre { background: #f3f4f6; padding: 12px; border-radius: 8px; min-height: 3em; }
+      .fx-backdrop {
+        position: fixed; inset: 0; z-index: 10; background: rgba(17, 24, 39, 0.5);
+        display: flex; align-items: center; justify-content: center;
+      }
+      .fx-dialog {
+        width: 520px; max-width: calc(100% - 48px); padding: 24px;
+        border-radius: 16px; background: #fff; color: #111827;
+      }
+      .fx-dialog h2 { margin: 0 0 8px; font-size: 20px; }
+      .fx-dialog p { margin: 0 0 16px; }
+      .fx-actions { display: flex; gap: 12px; flex-wrap: wrap; }
+      .fx-actions button { padding: 10px 16px; border: 0; border-radius: 8px; font-size: 14px; cursor: pointer; }
+      .fx-allow { background: #2563eb; color: #fff; }
+      .fx-min { background: #e5e7eb; color: #111827; }
+      .fx-config { background: transparent; color: #2563eb; text-decoration: underline; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Necessary cookies only</h1>
+      <p>reject モードでは「Necessary cookies only」（必要最小系）が、accept モードでは「Accept all」が押されます。</p>
+      <p><code>?mode=accept</code> を付けると accept モードになります。</p>
+      <pre id="log"></pre>
+    </main>
+
+    <div class="fx-backdrop" id="fx-backdrop">
+      <div class="fx-dialog" id="fx-consent-dialog" role="dialog" aria-modal="true">
+        <h2>We value your privacy</h2>
+        <p>
+          We and our partners use cookies to store and access information on your device,
+          personalise content and measure performance.
+        </p>
+        <div class="fx-actions">
+          <button class="fx-allow">Accept all</button>
+          <button class="fx-min">Necessary cookies only</button>
+          <button class="fx-config">Manage preferences</button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      (function () {
+        var log = document.getElementById('log');
+        function record(text) {
+          log.textContent += '[' + new Date().toLocaleTimeString('ja-JP') + '] ' + text + '\n';
+        }
+        document.addEventListener(
+          'click',
+          function (event) {
+            var el = event.target.closest('button, a, [role="button"], input');
+            if (el) record('クリック: ' + (el.textContent || el.value || '').trim());
+          },
+          true,
+        );
+        var backdrop = document.getElementById('fx-backdrop');
+        backdrop.addEventListener('click', function (event) {
+          var el = event.target.closest('button');
+          if (!el || el.classList.contains('fx-config')) return;
+          record('バナーを閉じました');
+          backdrop.remove();
+        });
+      })();
+    </script>
+  </body>
+</html>

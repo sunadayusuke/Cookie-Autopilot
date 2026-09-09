@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>fixture: 本文にバナー語が無いアイコンだけのバナー</title>
+    <script src="/content.js"></script>
+    <style>
+      body { margin: 0; font: 15px/1.8 system-ui, -apple-system, 'Hiragino Sans', sans-serif; }
+      main { padding: 24px; max-width: 720px; }
+      pre { background: #f3f4f6; padding: 12px; border-radius: 8px; min-height: 3em; }
+      .cookie-consent {
+        position: fixed; left: 24px; bottom: 24px; z-index: 10;
+        display: flex; gap: 12px; align-items: center;
+        padding: 16px 20px; border-radius: 12px; background: #111827; color: #f9fafb;
+      }
+      .cookie-consent svg { display: block; width: 28px; height: 28px; fill: #f9fafb; }
+      .cookie-consent button {
+        padding: 10px 16px; border: 0; border-radius: 8px; font-size: 14px; cursor: pointer;
+      }
+      .fx-deny { background: #e5e7eb; color: #111827; }
+      .fx-allow { background: #2563eb; color: #fff; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>アイコンだけのバナー</h1>
+      <p>
+        説明文が画像・アイコンで済まされていて、<strong>可視テキストがボタンの文言だけ</strong>の
+        バナーです。手がかりは <code>class="cookie-consent"</code> と押せる決定ボタンだけで、
+        本文にはバナー語（cookie / 同意 / privacy …）が 1 つもありません。
+      </p>
+      <p><code>?mode=accept</code> を付けると accept モードになります。</p>
+      <pre id="log"></pre>
+    </main>
+
+    <div class="cookie-consent" id="fx-cookie-icons">
+      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <path d="M12 2a10 10 0 1 0 10 10 6 6 0 0 1-6-6 4 4 0 0 1-4-4Zm-2 6a1.5 1.5 0 1 1-1.5 1.5A1.5 1.5 0 0 1 10 8Zm-2 6a1.5 1.5 0 1 1-1.5 1.5A1.5 1.5 0 0 1 8 14Zm6 1a1.5 1.5 0 1 1-1.5 1.5A1.5 1.5 0 0 1 14 15Z" />
+      </svg>
+      <button class="fx-deny" type="button">Reject</button>
+      <button class="fx-allow" type="button">Accept</button>
+    </div>
+
+    <script>
+      (function () {
+        var log = document.getElementById('log');
+        function record(text) {
+          log.textContent += '[' + new Date().toLocaleTimeString('ja-JP') + '] ' + text + '\n';
+        }
+        document.addEventListener(
+          'click',
+          function (event) {
+            var el = event.target.closest('button, a, [role="button"], input');
+            if (el) record('クリック: ' + (el.textContent || el.value || '').trim());
+          },
+          true,
+        );
+        var banner = document.getElementById('fx-cookie-icons');
+        banner.addEventListener('click', function (event) {
+          if (!event.target.closest('button')) return;
+          record('バナーを閉じました');
+          banner.remove();
+        });
+      })();
+    </script>
+  </body>
+</html>

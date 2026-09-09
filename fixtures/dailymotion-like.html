@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <title>fixture: 「内容を理解した」だけの Cookie ダイアログ</title>
+    <script src="/content.js"></script>
+    <style>
+      body { margin: 0; font: 15px/1.8 system-ui, -apple-system, 'Hiragino Sans', sans-serif; }
+      main { padding: 24px; max-width: 720px; }
+      pre { background: #f3f4f6; padding: 12px; border-radius: 8px; min-height: 3em; }
+      .CookiePopup__desktopContainer___ZCIMO {
+        position: fixed; right: 24px; top: 24px; width: 320px; z-index: 20;
+        padding: 20px; background: #fff; border-radius: 8px;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+        font-size: 13px; line-height: 1.7; color: #1f2937;
+      }
+      .CookiePopup__desktopContainer___ZCIMO p { margin: 0 0 12px; }
+      .CookiePopup__link___bJ2ng { color: #0d6efd; }
+      .CookiePopup__desktopContainer___ZCIMO button {
+        margin-top: 12px; padding: 10px 20px; border: 0; border-radius: 4px;
+        background: #0d6efd; color: #fff; font-size: 13px; cursor: pointer;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>「内容を理解した」だけの Cookie ダイアログ</h1>
+      <p>
+        実サイト（dailymotion.com）の構造を写したもの。決定ボタンは
+        <code>内容を理解した</code> の 1 つだけで、拒否ボタンも設定ボタンもありません。
+      </p>
+      <p>既定のプリセット（ほどよく守る）では押されて閉じ、「すべて拒否」では押さずに非表示になります。</p>
+      <pre id="log"></pre>
+    </main>
+
+    <div class="CookiePopup__desktopContainer___ZCIMO" role="dialog">
+      <p>
+        Dailymotion および提携先各社は、サービスの提供・改善と、お客様の興味に合わせた広告表示のために
+        クッキーを利用しています。詳しくは
+        <a class="CookiePopup__link___bJ2ng" href="/legal/cookiepolicy">当社のクッキーに関する方針。</a>
+      </p>
+      <button>内容を理解した</button>
+    </div>
+
+    <script>
+      (function () {
+        var log = document.getElementById('log');
+        function record(text) {
+          log.textContent += '[' + new Date().toLocaleTimeString('ja-JP') + '] ' + text + '\n';
+        }
+        document.addEventListener(
+          'click',
+          function (event) {
+            var el = event.target.closest('button, a, [role="button"], input');
+            if (el) record('クリック: ' + (el.textContent || el.value || '').trim());
+          },
+          true,
+        );
+        var popup = document.querySelector('.CookiePopup__desktopContainer___ZCIMO');
+        popup.querySelector('button').addEventListener('click', function () {
+          record('バナーを閉じました');
+          popup.remove();
+        });
+      })();
+    </script>
+  </body>
+</html>

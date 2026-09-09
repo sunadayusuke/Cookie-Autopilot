@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <title>fixture: 誤クリック防止（祖先の本文にだけ Cookie 語がある div soup）</title>
+    <script src="/content.js"></script>
+    <style>
+      body { margin: 0; font: 15px/1.8 system-ui, -apple-system, 'Hiragino Sans', sans-serif; }
+      .fx-note { padding: 24px; max-width: 720px; }
+      pre { background: #f3f4f6; padding: 12px; border-radius: 8px; min-height: 3em; }
+      .page { padding: 0 24px 24px; max-width: 720px; }
+      .site-footer { margin-top: 24px; padding-top: 16px; border-top: 1px solid #e5e7eb; color: #6b7280; }
+      .site-footer a { color: #6b7280; }
+      .modal, .dlg, .update {
+        position: fixed; left: 50%; z-index: 10;
+        width: 460px; max-width: calc(100% - 48px); padding: 24px; transform: translateX(-50%);
+        border-radius: 16px; background: #fff; color: #111827; box-shadow: 0 20px 40px rgba(0, 0, 0, 0.25);
+      }
+      .modal { top: 72px; }
+      .dlg { top: 320px; }
+      .update { top: 560px; }
+      .promo, .newsletter {
+        position: fixed; right: 24px; z-index: 10;
+        width: 320px; padding: 20px; border-radius: 12px;
+        background: #111827; color: #f9fafb; box-shadow: 0 12px 24px rgba(0, 0, 0, 0.25);
+      }
+      .promo { bottom: 24px; }
+      .newsletter { bottom: 220px; }
+      .actions { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 16px; }
+      button { padding: 10px 18px; border: 0; border-radius: 8px; font-size: 14px; cursor: pointer; }
+      .primary { background: #2563eb; color: #fff; }
+      .secondary { background: #e5e7eb; color: #111827; }
+    </style>
+  </head>
+  <body>
+    <div class="fx-note">
+      <h1>誤クリック防止（祖先の本文にだけ Cookie 語がある div soup）</h1>
+      <p>
+        <code>main</code> / <code>nav</code> / <code>article</code> を使わない SPA 風のページで、
+        フッターに「Cookie Policy」のリンクが 1 本あるだけの構造です。<code>isCookieSpecific()</code> は
+        5 階層以内の祖先の本文で真になるので、下の 5 つはどれも <code>cookieSpecific</code> に
+        なっていました。①〜④は<strong>自身の本文には Cookie についても同意についても一言も
+        書いていません</strong>。⑤は「プライバシーポリシー」「同意」というバナー語だけを持ち、
+        <strong>Cookie 固有語は 1 つもありません</strong>。
+        reject / accept のどちらでも<strong>何も押さない・消さない・検出もしない</strong>のが正解です。
+      </p>
+      <p><code>?mode=accept</code> を付けると accept モードになります。</p>
+      <pre id="log"></pre>
+    </div>
+
+    <div class="page">
+      <div class="feed">
+        <h2>今日の記事</h2>
+        <p>本文です。ここには同意画面の手がかりになる語はありません。</p>
+      </div>
+
+      <!-- ① 規約更新モーダル。押すと reject で「Decline」（＝規約に同意しない）が走る -->
+      <div class="modal" id="fx-tos-modal" role="dialog">
+        <h2>Our terms have changed</h2>
+        <p>We have updated our Terms of Service. Please review and confirm to continue.</p>
+        <div class="actions">
+          <button class="primary">I agree</button>
+          <button class="secondary">Decline</button>
+        </div>
+      </div>
+
+      <!-- ② 削除確認ダイアログ。決定候補が「はい」しか無いので fallback の非表示に落ちていた -->
+      <div class="dlg" id="fx-delete-dialog" role="dialog">
+        <h2>確認</h2>
+        <p>この記事を削除しますか？この操作は取り消せません。</p>
+        <div class="actions">
+          <button class="primary">はい</button>
+          <button class="secondary">いいえ</button>
+        </div>
+      </div>
+
+      <!-- ③ 固定プロモ。決定候補が閉じる語 1 つなので「OK」が押されていた -->
+      <div class="promo" id="fx-promo">
+        <p>アプリで見るともっと便利</p>
+        <div class="actions">
+          <button class="primary">OK</button>
+        </div>
+      </div>
+
+      <!-- ④ ニュースレター。「No thanks」が拒否の弱一致として候補になっていた -->
+      <div class="newsletter" id="fx-newsletter">
+        <p>Weekly stories, straight to your inbox.</p>
+        <div class="actions">
+          <button class="primary">Subscribe</button>
+          <button class="secondary">No thanks</button>
+        </div>
+      </div>
+
+      <!-- ⑤ 規約・プライバシーポリシーの更新モーダル。①と違い自身の本文にバナー語
+           （プライバシー・同意）があるので text-banner が付き、祖先の Cookie Policy リンクで
+           ancestor-cookie も付いて採用され、reject で「拒否」＝規約に同意しない、が押されていた -->
+      <div class="update" id="fx-terms-update" role="dialog">
+        <h2>規約改定のお知らせ</h2>
+        <p>利用規約とプライバシーポリシーを改定しました。内容をご確認のうえ、同意しますか？</p>
+        <div class="actions">
+          <button class="primary">同意する</button>
+          <button class="secondary">拒否</button>
+        </div>
+      </div>
+
+      <div class="site-footer">
+        <a href="/cookie-policy">Cookie Policy</a> ・ <a href="/terms">Terms</a> ・ <a href="/help">Help</a>
+      </div>
+    </div>
+
+    <script>
+      (function () {
+        var log = document.getElementById('log');
+        function record(text) {
+          log.textContent += '[' + new Date().toLocaleTimeString('ja-JP') + '] ' + text + '\n';
+        }
+        document.addEventListener(
+          'click',
+          function (event) {
+            var el = event.target.closest('button, a, [role="button"], input');
+            if (el) record('クリック（本来は起きないはず）: ' + (el.textContent || el.value || '').trim());
+          },
+          true,
+        );
+        record('待機中。何もクリックされなければ成功です。');
+      })();
+    </script>
+  </body>
+</html>

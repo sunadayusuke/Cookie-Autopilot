@@ -1,0 +1,92 @@
+<!--
+  gakken.co.jp（学研ホールディングス）の構造と CSS を再現したもの（説明文はこちらで書き直し）。
+  決定ボタンが <h4> 1 つだけ（button タグでも role="button" でも onclick でも
+  ボタンらしい class トークンも持たない）で、拒否ボタンは無い（同意しない場合は
+  ブラウザを閉じるよう促す作りになっている）。
+-->
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <title>fixture: 独自ボタン（&lt;h4&gt;同意&lt;/h4&gt;）だけの Cookie バナー（gakken.co.jp 型）</title>
+    <script src="/content.js"></script>
+    <style>
+      body { margin: 0; font: 15px/1.8 system-ui, -apple-system, 'Hiragino Sans', sans-serif; }
+      main { padding: 24px; max-width: 720px; }
+      pre { background: #f3f4f6; padding: 12px; border-radius: 8px; min-height: 3em; }
+
+      /* 実サイトの CSS そのまま（#site-info 配下でだけ効くセレクタ） */
+      #site-info .ux_popup_cookie_warning {
+        position: fixed; right: 0; bottom: 0; max-height: 350px;
+        background-color: rgba(240, 240, 240, .85); z-index: 100;
+      }
+      #site-info .ux_popup_cookie_warning .title4.highlight h4 {
+        display: block; width: 200px; margin: auto; padding: 20px;
+        color: #fff; background-color: #00a650; text-align: center;
+        font-weight: bold; font-size: 16px; cursor: pointer;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>独自ボタン（&lt;h4&gt;同意&lt;/h4&gt;）だけの Cookie バナー</h1>
+      <p>
+        実サイト（gakken.co.jp）の構造を写したもの。決定ボタンは
+        <code>&lt;h4&gt;同意&lt;/h4&gt;</code> の 1 つだけで、<code>button</code> タグでも
+        <code>role="button"</code> でも <code>onclick</code> でもなく、class も
+        <code>title4</code> でボタンらしい class トークンを持ちません。拒否ボタンは
+        ありません（同意しない場合はブラウザを閉じるよう促されます）。
+      </p>
+      <p>既定のプリセット・「すべて拒否」のどちらでも、「同意」を押さずに非表示になります。</p>
+      <pre id="log"></pre>
+    </main>
+
+    <div id="site-info">
+      <div class="multiColumn multiColumn1 ux_popup_cookie_warning" id="multiColumn1-13">
+        <div class="column columnLast column1">
+          <div id="reuse-main-area-7" class="reuse-main-area">
+            <div class="multiColumn multiColumn1" id="multiColumn1-14">
+              <div class="column columnLast column1">
+                <div class="text-section" id="text-section-8">
+                  <div class="rich-text">
+                    <p><strong>クッキーポリシーについて</strong></p>
+                    <p>当ウェブサイトでは、サービス向上を目的としてCookieを利用しています。<br>
+                    Cookieの利用にご同意いただける場合は、同意ボタンを押してください。<br>
+                    ご同意いただけない場合は、恐れ入りますがブラウザを閉じて閲覧をお控えください。</p>
+                    <p><a href="/ja/privacypolicy.html">プライバシーポリシー</a></p>
+                  </div>
+                </div>
+                <div class="title4 highlight no-icon" id="title4-1"><h4>同意</h4></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      (function () {
+        var log = document.getElementById('log');
+        function record(text) {
+          log.textContent += '[' + new Date().toLocaleTimeString('ja-JP') + '] ' + text + '\n';
+        }
+        document.addEventListener(
+          'click',
+          function (event) {
+            var el = event.target.closest('button, a, [role="button"], input, h4');
+            if (el) record('クリック: ' + (el.textContent || el.value || '').trim());
+          },
+          true,
+        );
+        var banner = document.getElementById('multiColumn1-13');
+        var agreeHeading = banner.querySelector('.title4.highlight h4');
+        agreeHeading.addEventListener('click', function () {
+          // 実サイトと同じく、押されたら agree class を付けてバナーを消す
+          banner.classList.add('agree');
+          record('バナーを閉じました');
+          banner.remove();
+        });
+      })();
+    </script>
+  </body>
+</html>

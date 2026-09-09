@@ -1,0 +1,593 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <title>fixture: カスタム要素 + 入れ子の設定パネル（mercedes-benz 型）</title>
+    <script src="/content.js"></script>
+    <style>
+      body { margin: 0; font: 15px/1.8 system-ui, -apple-system, 'Hiragino Sans', sans-serif; }
+      main { padding: 24px; max-width: 720px; }
+      pre { background: #f3f4f6; padding: 12px; border-radius: 8px; min-height: 3em; white-space: pre-wrap; }
+
+      /* 実サイトと同じくボタン・テキストはすべてカスタム要素。既定は inline なので敷き直す */
+      wb7-heading, wb7-text, cmm-heading-section, cmm-buttons-wrapper, cmm-footer-links,
+      cmm-cookie-settings, cmm-icon { display: block; }
+      wb7-button, wb7-link { display: inline-block; }
+      wb7-button {
+        padding: 10px 20px; border-radius: 2px; font-size: 14px; cursor: pointer;
+        background: #0078d6; color: #fff;
+      }
+      wb7-button.button--toggle-cookie-details { background: #fff; color: #0078d6; box-shadow: inset 0 0 0 1px #0078d6; }
+      wb7-button.toggle-button { background: none; color: #0078d6; padding: 4px 8px; }
+      wb7-link { color: #6b7280; margin-right: 16px; font-size: 12px; cursor: pointer; }
+
+      .cmm-cookie-banner {
+        position: fixed; inset: 0; z-index: 20; display: flex; align-items: center; justify-content: center;
+        background: rgba(15, 23, 42, 0.55);
+      }
+      .cmm-cookie-banner__content {
+        width: 720px; max-width: calc(100% - 48px); max-height: calc(100vh - 48px); overflow: auto;
+        padding: 32px; background: #fff; box-shadow: 0 24px 48px rgba(0, 0, 0, 0.3);
+      }
+      .main-title { font-size: 20px; font-weight: 700; margin-bottom: 12px; }
+      .main-description { font-size: 13px; margin-bottom: 12px; }
+      .cmm-cookie-banner__actions { margin-top: 20px; }
+      .button-group { display: flex; gap: 12px; justify-content: flex-end; }
+      .footer-links__list { list-style: none; display: flex; margin: 16px 0 0; padding: 0; }
+
+      /* 設定パネルは最初から DOM にあるが、「設定」を押すまでは隠れている */
+      cmm-cookie-settings { display: none; }
+      .cmm-cookie-banner__content.settings-expanded cmm-cookie-settings { display: block; }
+      #cookie-settings { margin-top: 24px; border-top: 1px solid #e5e7eb; padding-top: 16px; }
+      .cookie-settings-content ul { list-style: none; margin: 0; padding: 0; }
+      .category-item { padding: 12px 0; border-bottom: 1px solid #e5e7eb; }
+      .category-description { font-size: 12px; color: #6b7280; margin: 4px 0 0 24px; }
+      .consent-list { margin: 8px 0 0 24px !important; }
+      .consent-item { font-size: 13px; }
+      .cmm-checkbox { display: flex; gap: 8px; align-items: center; font-weight: 600; }
+      .consent-label { font-weight: 400; }
+      .cookie-settings-content .button-group { margin-top: 20px; }
+      .consent-item__icon { border: 0; background: none; cursor: pointer; color: #0078d6; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>カスタム要素 + 入れ子の設定パネル（mercedes-benz 型）</h1>
+      <p>
+        決定ボタンが <code>&lt;button&gt;</code> でも <code>&lt;a&gt;</code> でもなく
+        <code>&lt;wb7-button class="button …"&gt;</code>（カスタム要素）で作られた同意画面です。
+        最小の容器になる <code>.cmm-cookie-banner__actions</code> のテキストには Cookie の語が無く、
+        <strong>class の <code>cmm-cookie-banner__actions</code> が唯一の手がかり</strong>になります。
+      </p>
+      <p>
+        reject モードでは「設定」を押してパネルを開き、<strong>カテゴリのチェックだけ</strong>
+        （分析と統計・マーケティング・データ共有）を外して「設定の保存」を押します。
+        必須・個別サービス・「すべて選択する」には触りません。
+        <code>?mode=accept</code> では「全てに同意」が押されます。
+      </p>
+      <pre id="log"></pre>
+    </main>
+
+    <div class="cmm-cookie-banner" id="fx-cookie-banner">
+      <div class="cmm-cookie-banner__content" id="fx-banner-content" tabindex="0">
+        <div class="cmm-cookie-banner__scroll-area">
+          <cmm-heading-section>
+            <wb7-heading class="main-title wb-heading" size="m" tag="div">
+              当社は、お客様によりよいサービスをお届けするため、複数の目的でCookieを利用しています
+            </wb7-heading>
+            <wb7-text class="main-description wb-text" size="l" tag="p">
+              当社および提携先は、当ウェブサイトを快適にご利用いただくために必要な技術に加え、
+              ご利用状況の把握や分析、当社サービスのご案内の改善、
+              お客様の関心に応じた内容の表示のために、Cookie およびこれに類する技術を利用します。
+              これらの技術では、お客様の端末に保存されている情報を読み取り、また保存する場合があります。
+            </wb7-text>
+            <wb7-text class="main-description wb-text" size="l" tag="p">
+              目的ごとの詳しい内容は、下の「設定」およびプライバシーポリシーからいつでもご確認いただけます。
+              選択はあとからいつでも変更できます。
+            </wb7-text>
+          </cmm-heading-section>
+        </div>
+
+        <div class="cmm-cookie-banner__actions">
+          <cmm-buttons-wrapper>
+            <div class="buttons-wrapper">
+              <div class="button-group">
+                <wb7-button
+                  class="button button--toggle-cookie-details wb-button"
+                  data-test="toggle-cookie-details"
+                  variant="primary"
+                  size="s"
+                  >設定</wb7-button
+                >
+                <wb7-button
+                  class="button button--accept-all wb-button"
+                  data-test="handle-accept-all-button"
+                  variant="primary"
+                  size="s"
+                  >全てに同意</wb7-button
+                >
+              </div>
+            </div>
+          </cmm-buttons-wrapper>
+          <cmm-footer-links>
+            <footer class="footer-links">
+              <ul class="footer-links__list">
+                <li>
+                  <wb7-link class="footer-links__list__item wb-link" variant="standalone" size="m"
+                    >プライバシーポリシー</wb7-link
+                  >
+                </li>
+                <li>
+                  <wb7-link class="footer-links__list__item wb-link" variant="standalone" size="m"
+                    >インプリント</wb7-link
+                  >
+                </li>
+              </ul>
+            </footer>
+          </cmm-footer-links>
+        </div>
+
+        <cmm-cookie-settings>
+          <div id="cookie-settings">
+            <div class="cookie-settings-content">
+              <ul>
+                <li class="select-all-item">
+                  <label class="select-all--label cmm-checkbox">
+                    <input
+                      type="checkbox"
+                      class="cmm-checkbox-input cmm-checkbox-input--category selected-partial"
+                      data-test="handle-select-all-change"
+                    /><div class="cmm-checkbox-fake"></div>すべて選択する
+                  </label>
+                </li>
+
+                <li class="category-item" data-category-wrapper="必須Cookie ">
+                  <div class="category-select-all">
+                    <label class="category-label cmm-checkbox">
+                      <input
+                        type="checkbox"
+                        class="cmm-checkbox-input cmm-checkbox-input--category selected-all"
+                        disabled
+                        checked
+                        data-category="必須Cookie "
+                        data-test="handle-category-change"
+                      /><div class="cmm-checkbox-fake"></div>必須Cookie
+                    </label>
+                  </div>
+                  <wb7-text class="category-description wb-text"
+                    >必須のウェブ技術および Cookie は、当ウェブサイトを正しく表示し利用するために欠かせません。
+                    ページをまたいだ状態の維持、入力内容の保持、セキュリティの確保といった基本的な機能に使われており、
+                    お客様がオフにすることはできません。</wb7-text
+                  >
+                  <wb7-button
+                    class="toggle-button wb-button"
+                    data-test="toggle-category-details"
+                    aria-label="詳細を表示する"
+                    variant="tertiary"
+                    size="s"
+                    ><cmm-icon></cmm-icon></wb7-button
+                  >
+                  <ul class="consent-list">
+                    <li class="consent-item">
+                      <label class="consent-label cmm-checkbox">
+                        <input
+                          type="checkbox"
+                          class="cmm-checkbox-input"
+                          disabled
+                          checked
+                          data-test="handle-consent-change"
+                          data-template-id="tSaNgSbhw"
+                          data-category="必須Cookie "
+                        /><div class="cmm-checkbox-fake"></div>
+                        <div class="consent-item__information">
+                          <span class="consent-item__name">Usercentrics Consent Management Platform | JP</span>
+                          <button
+                            type="button"
+                            class="consent-item__icon"
+                            data-test="toggle-consent-info-modal"
+                            aria-label="Usercentrics Consent Management Platform | JP の詳細を表示する"
+                          >
+                            <cmm-icon></cmm-icon>
+                          </button>
+                        </div>
+                      </label>
+                    </li>
+                    <li class="consent-item">
+                      <label class="consent-label cmm-checkbox">
+                        <input
+                          type="checkbox"
+                          class="cmm-checkbox-input"
+                          disabled
+                          checked
+                          data-test="handle-consent-change"
+                          data-template-id="HkocEodjb7"
+                          data-category="必須Cookie "
+                        /><div class="cmm-checkbox-fake"></div>
+                        <div class="consent-item__information">
+                          <span class="consent-item__name">Session Handling | JP</span>
+                          <button
+                            type="button"
+                            class="consent-item__icon"
+                            data-test="toggle-consent-info-modal"
+                            aria-label="Session Handling | JP の詳細を表示する"
+                          >
+                            <cmm-icon></cmm-icon>
+                          </button>
+                        </div>
+                      </label>
+                    </li>
+                    <li class="consent-item">
+                      <label class="consent-label cmm-checkbox">
+                        <input
+                          type="checkbox"
+                          class="cmm-checkbox-input"
+                          disabled
+                          checked
+                          data-test="handle-consent-change"
+                          data-template-id="ryencodob7"
+                          data-category="必須Cookie "
+                        /><div class="cmm-checkbox-fake"></div>
+                        <div class="consent-item__information">
+                          <span class="consent-item__name">Akamai Bot Manager | JP</span>
+                          <button
+                            type="button"
+                            class="consent-item__icon"
+                            data-test="toggle-consent-info-modal"
+                            aria-label="Akamai Bot Manager | JP の詳細を表示する"
+                          >
+                            <cmm-icon></cmm-icon>
+                          </button>
+                        </div>
+                      </label>
+                    </li>
+                  </ul>
+                </li>
+
+                <li class="category-item" data-category-wrapper="分析と統計">
+                  <div class="category-select-all">
+                    <label class="category-label cmm-checkbox">
+                      <input
+                        type="checkbox"
+                        class="cmm-checkbox-input cmm-checkbox-input--category selected-all"
+                        checked
+                        data-category="分析と統計"
+                        data-test="handle-category-change"
+                      /><div class="cmm-checkbox-fake"></div>分析と統計
+                    </label>
+                  </div>
+                  <wb7-text class="category-description wb-text"
+                    >当ウェブサイトの利用状況を匿名で計測・評価するための分析技術（Cookieを含みます）です。
+                    どのページがよく見られているか、どこから訪問いただいたかを集計し、
+                    ページ構成や内容の見直しに役立てます。</wb7-text
+                  >
+                  <wb7-button
+                    class="toggle-button wb-button"
+                    data-test="toggle-category-details"
+                    aria-label="詳細を表示する"
+                    variant="tertiary"
+                    size="s"
+                    ><cmm-icon></cmm-icon></wb7-button
+                  >
+                  <ul class="consent-list">
+                    <li class="consent-item">
+                      <label class="consent-label cmm-checkbox">
+                        <input
+                          type="checkbox"
+                          class="cmm-checkbox-input"
+                          checked
+                          data-test="handle-consent-change"
+                          data-template-id="BJz7qNsdX"
+                          data-category="分析と統計"
+                        /><div class="cmm-checkbox-fake"></div>
+                        <div class="consent-item__information">
+                          <span class="consent-item__name">Google Analytics | JP</span>
+                          <button
+                            type="button"
+                            class="consent-item__icon"
+                            data-test="toggle-consent-info-modal"
+                            aria-label="Google Analytics | JP の詳細を表示する"
+                          >
+                            <cmm-icon></cmm-icon>
+                          </button>
+                        </div>
+                      </label>
+                    </li>
+                    <li class="consent-item">
+                      <label class="consent-label cmm-checkbox">
+                        <input
+                          type="checkbox"
+                          class="cmm-checkbox-input"
+                          checked
+                          data-test="handle-consent-change"
+                          data-template-id="ryyi5NsuQ"
+                          data-category="分析と統計"
+                        /><div class="cmm-checkbox-fake"></div>
+                        <div class="consent-item__information">
+                          <span class="consent-item__name">Adobe Analytics | JP</span>
+                          <button
+                            type="button"
+                            class="consent-item__icon"
+                            data-test="toggle-consent-info-modal"
+                            aria-label="Adobe Analytics | JP の詳細を表示する"
+                          >
+                            <cmm-icon></cmm-icon>
+                          </button>
+                        </div>
+                      </label>
+                    </li>
+                    <li class="consent-item">
+                      <label class="consent-label cmm-checkbox">
+                        <input
+                          type="checkbox"
+                          class="cmm-checkbox-input"
+                          checked
+                          data-test="handle-consent-change"
+                          data-template-id="H1Vl5EouX"
+                          data-category="分析と統計"
+                        /><div class="cmm-checkbox-fake"></div>
+                        <div class="consent-item__information">
+                          <span class="consent-item__name">Hotjar | JP</span>
+                          <button
+                            type="button"
+                            class="consent-item__icon"
+                            data-test="toggle-consent-info-modal"
+                            aria-label="Hotjar | JP の詳細を表示する"
+                          >
+                            <cmm-icon></cmm-icon>
+                          </button>
+                        </div>
+                      </label>
+                    </li>
+                  </ul>
+                </li>
+
+                <li class="category-item" data-category-wrapper="マーケティング">
+                  <div class="category-select-all">
+                    <label class="category-label cmm-checkbox">
+                      <input
+                        type="checkbox"
+                        class="cmm-checkbox-input cmm-checkbox-input--category selected-all"
+                        checked
+                        data-category="マーケティング"
+                        data-test="handle-category-change"
+                      /><div class="cmm-checkbox-fake"></div>マーケティング
+                    </label>
+                  </div>
+                  <wb7-text class="category-description wb-text"
+                    >お客様の関心に応じた内容を、当ウェブサイトや提携先のウェブサイトで
+                    表示するための技術です。表示回数の調整や、効果測定にも利用します。</wb7-text
+                  >
+                  <wb7-button
+                    class="toggle-button wb-button"
+                    data-test="toggle-category-details"
+                    aria-label="詳細を表示する"
+                    variant="tertiary"
+                    size="s"
+                    ><cmm-icon></cmm-icon></wb7-button
+                  >
+                  <ul class="consent-list">
+                    <li class="consent-item">
+                      <label class="consent-label cmm-checkbox">
+                        <input
+                          type="checkbox"
+                          class="cmm-checkbox-input"
+                          checked
+                          data-test="handle-consent-change"
+                          data-template-id="S1kmqVoOX"
+                          data-category="マーケティング"
+                        /><div class="cmm-checkbox-fake"></div>
+                        <div class="consent-item__information">
+                          <span class="consent-item__name">Google Ads | JP</span>
+                          <button
+                            type="button"
+                            class="consent-item__icon"
+                            data-test="toggle-consent-info-modal"
+                            aria-label="Google Ads | JP の詳細を表示する"
+                          >
+                            <cmm-icon></cmm-icon>
+                          </button>
+                        </div>
+                      </label>
+                    </li>
+                    <li class="consent-item">
+                      <label class="consent-label cmm-checkbox">
+                        <input
+                          type="checkbox"
+                          class="cmm-checkbox-input"
+                          checked
+                          data-test="handle-consent-change"
+                          data-template-id="ByemcEidQ"
+                          data-category="マーケティング"
+                        /><div class="cmm-checkbox-fake"></div>
+                        <div class="consent-item__information">
+                          <span class="consent-item__name">Meta Pixel | JP</span>
+                          <button
+                            type="button"
+                            class="consent-item__icon"
+                            data-test="toggle-consent-info-modal"
+                            aria-label="Meta Pixel | JP の詳細を表示する"
+                          >
+                            <cmm-icon></cmm-icon>
+                          </button>
+                        </div>
+                      </label>
+                    </li>
+                    <li class="consent-item">
+                      <label class="consent-label cmm-checkbox">
+                        <input
+                          type="checkbox"
+                          class="cmm-checkbox-input"
+                          checked
+                          data-test="handle-consent-change"
+                          data-template-id="rJZ7cNodm"
+                          data-category="マーケティング"
+                        /><div class="cmm-checkbox-fake"></div>
+                        <div class="consent-item__information">
+                          <span class="consent-item__name">LinkedIn Insight Tag | JP</span>
+                          <button
+                            type="button"
+                            class="consent-item__icon"
+                            data-test="toggle-consent-info-modal"
+                            aria-label="LinkedIn Insight Tag | JP の詳細を表示する"
+                          >
+                            <cmm-icon></cmm-icon>
+                          </button>
+                        </div>
+                      </label>
+                    </li>
+                  </ul>
+                </li>
+
+                <li class="category-item" data-category-wrapper="メルセデス・ベンツ関連会社へのデータ共有">
+                  <div class="category-select-all">
+                    <label class="category-label cmm-checkbox">
+                      <input
+                        type="checkbox"
+                        class="cmm-checkbox-input cmm-checkbox-input--category selected-all"
+                        checked
+                        data-category="メルセデス・ベンツ関連会社へのデータ共有"
+                        data-test="handle-category-change"
+                      /><div class="cmm-checkbox-fake"></div>メルセデス・ベンツ関連会社へのデータ共有
+                    </label>
+                  </div>
+                  <wb7-text class="category-description wb-text"
+                    >当ウェブサイトでの利用状況を、メルセデス・ベンツの関連会社と共有するための技術です。
+                    グループ各社のサイトをまたいだご案内の調整に利用します。</wb7-text
+                  >
+                  <wb7-button
+                    class="toggle-button wb-button"
+                    data-test="toggle-category-details"
+                    aria-label="詳細を表示する"
+                    variant="tertiary"
+                    size="s"
+                    ><cmm-icon></cmm-icon></wb7-button
+                  >
+                  <ul class="consent-list">
+                    <li class="consent-item">
+                      <label class="consent-label cmm-checkbox">
+                        <input
+                          type="checkbox"
+                          class="cmm-checkbox-input"
+                          checked
+                          data-test="handle-consent-change"
+                          data-template-id="HJx7qEjdX"
+                          data-category="メルセデス・ベンツ関連会社へのデータ共有"
+                        /><div class="cmm-checkbox-fake"></div>
+                        <div class="consent-item__information">
+                          <span class="consent-item__name">Mercedes-Benz Group | JP</span>
+                          <button
+                            type="button"
+                            class="consent-item__icon"
+                            data-test="toggle-consent-info-modal"
+                            aria-label="Mercedes-Benz Group | JP の詳細を表示する"
+                          >
+                            <cmm-icon></cmm-icon>
+                          </button>
+                        </div>
+                      </label>
+                    </li>
+                  </ul>
+                </li>
+              </ul>
+
+              <wb7-button class="toggle-button wb-button" data-test="toggle-cookie-details" variant="tertiary" size="s"
+                ><cmm-icon aria-hidden="true"></cmm-icon>閉じる</wb7-button
+              >
+              <div class="button-group">
+                <wb7-button
+                  class="button button--confirm-selection wb-button"
+                  data-test="handle-confirm-selection-button"
+                  variant="primary"
+                  size="s"
+                  >設定の保存</wb7-button
+                >
+                <wb7-button
+                  class="button button--accept-all wb-button"
+                  data-test="handle-accept-all-button"
+                  variant="primary"
+                  size="s"
+                  >全てに同意</wb7-button
+                >
+              </div>
+            </div>
+          </div>
+        </cmm-cookie-settings>
+      </div>
+    </div>
+
+    <script>
+      (function () {
+        var log = document.getElementById('log');
+        function record(text) {
+          log.textContent += '[' + new Date().toLocaleTimeString('ja-JP') + '] ' + text + '\n';
+        }
+
+        var banner = document.getElementById('fx-cookie-banner');
+        var content = document.getElementById('fx-banner-content');
+        var settings = banner.querySelector('.cookie-settings-content');
+
+        /** ラベルの文字（チェックボックスの行名） */
+        function labelOf(input) {
+          var label = input.closest('label');
+          return label ? label.textContent.replace(/\s+/g, ' ').trim() : input.getAttribute('data-category') || '';
+        }
+
+        document.addEventListener(
+          'click',
+          function (event) {
+            var el = event.target.closest('wb7-button, wb7-link, button, a, [role="button"], input');
+            if (!el || el.type === 'checkbox') return;
+            var text = (el.textContent || el.value || el.getAttribute('aria-label') || '').replace(/\s+/g, ' ').trim();
+            record('クリック: ' + text);
+          },
+          true,
+        );
+
+        // チェックの変化を記録する。カテゴリを外すと配下の個別チェックも外れる（実サイトと同じ）
+        settings.addEventListener('change', function (event) {
+          var input = event.target;
+          if (input.type !== 'checkbox') return;
+          record('チェック: ' + labelOf(input) + ' -> ' + (input.checked ? 'on' : 'off'));
+          if (!input.classList.contains('cmm-checkbox-input--category')) return;
+          var item = input.closest('.category-item');
+          if (!item) return;
+          item.querySelectorAll('.consent-item input[type="checkbox"]').forEach(function (child) {
+            if (child.disabled) return;
+            child.checked = input.checked;
+          });
+        });
+
+        function closeBanner(reason) {
+          record(reason);
+          banner.remove();
+        }
+
+        banner.addEventListener('click', function (event) {
+          var button = event.target.closest('wb7-button');
+          if (!button) return;
+          var action = button.getAttribute('data-test');
+
+          if (action === 'toggle-cookie-details') {
+            var expanded = content.classList.toggle('settings-expanded');
+            record(expanded ? '設定パネルを開きました' : '設定パネルを閉じました');
+            return;
+          }
+          if (action === 'handle-accept-all-button') {
+            closeBanner('全てに同意してバナーを閉じました');
+            return;
+          }
+          if (action === 'handle-confirm-selection-button') {
+            var on = [];
+            settings.querySelectorAll('.cmm-checkbox-input--category').forEach(function (input) {
+              if (input.checked) on.push(labelOf(input));
+            });
+            record('設定の保存 -> 残ったのは: ' + (on.join(' / ') || 'なし'));
+            closeBanner('バナーとパネルを閉じました');
+          }
+        });
+
+        record('待機中。「設定」→ カテゴリのチェックを外す →「設定の保存」で成功です。');
+      })();
+    </script>
+  </body>
+</html>

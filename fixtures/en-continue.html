@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>fixture: Continue だけの英語バナー</title>
+    <script src="/content.js"></script>
+    <style>
+      body { margin: 0; font: 15px/1.8 system-ui, -apple-system, 'Hiragino Sans', sans-serif; }
+      main { padding: 24px; max-width: 720px; }
+      pre { background: #f3f4f6; padding: 12px; border-radius: 8px; min-height: 3em; }
+      .fx-cookie-strip {
+        position: fixed; left: 0; right: 0; bottom: 0; z-index: 10;
+        display: flex; gap: 16px; align-items: center; flex-wrap: wrap;
+        padding: 18px 24px; background: #1f2937; color: #f9fafb;
+      }
+      .fx-cookie-strip p { margin: 0; flex: 1 1 320px; }
+      .fx-cookie-strip button { padding: 10px 20px; border: 0; border-radius: 8px; background: #2563eb; color: #fff; font-size: 14px; cursor: pointer; }
+      .fx-cookie-strip a { color: #93c5fd; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Continue だけの英語バナー</h1>
+      <p>
+        決定ボタンが「Continue」しかないので、reject では閉じる語として、accept では許可の弱一致として押されます。
+        どちらも容器の Cookie 固有語（cookies）があることが条件です。
+      </p>
+      <p><code>?mode=accept</code> を付けると accept モードになります。</p>
+      <pre id="log"></pre>
+    </main>
+
+    <div class="fx-cookie-strip" id="fx-cookie-continue">
+      <p>By continuing to browse, you accept our use of cookies.</p>
+      <button class="fx-continue">Continue</button>
+      <a href="/privacy">Privacy policy</a>
+    </div>
+
+    <script>
+      (function () {
+        var log = document.getElementById('log');
+        function record(text) {
+          log.textContent += '[' + new Date().toLocaleTimeString('ja-JP') + '] ' + text + '\n';
+        }
+        document.addEventListener(
+          'click',
+          function (event) {
+            var el = event.target.closest('button, a, [role="button"], input');
+            if (el) record('クリック: ' + (el.textContent || el.value || '').trim());
+          },
+          true,
+        );
+        var banner = document.getElementById('fx-cookie-continue');
+        banner.addEventListener('click', function (event) {
+          if (!event.target.closest('button')) return;
+          record('バナーを閉じました');
+          banner.remove();
+        });
+      })();
+    </script>
+  </body>
+</html>

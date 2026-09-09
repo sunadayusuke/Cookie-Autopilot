@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <title>fixture: 画面遷移のあとに出る 2 回目のバナー（SPA）</title>
+    <script src="/content.js"></script>
+    <style>
+      body { margin: 0; font: 15px/1.8 system-ui, -apple-system, 'Hiragino Sans', sans-serif; }
+      main { padding: 24px; max-width: 720px; }
+      pre { background: #f3f4f6; padding: 12px; border-radius: 8px; min-height: 3em; white-space: pre-wrap; }
+      .fx-nav { display: flex; gap: 12px; flex-wrap: wrap; margin: 16px 0; }
+      .fx-nav button { padding: 10px 16px; border: 1px solid #d1d5db; border-radius: 8px; background: #fff; cursor: pointer; }
+      .fx-screen { padding: 12px 16px; border-radius: 8px; background: #eef2ff; }
+      .fx-cookie-bar {
+        position: fixed; left: 0; right: 0; bottom: 0; z-index: 10;
+        display: flex; gap: 12px; align-items: center; flex-wrap: wrap;
+        padding: 20px 24px; background: #111827; color: #f9fafb;
+      }
+      .fx-cookie-bar p { margin: 0; flex: 1 1 320px; }
+      .fx-cookie-bar button { padding: 10px 16px; border: 0; border-radius: 8px; font-size: 14px; cursor: pointer; }
+      .fx-agree { background: #2563eb; color: #fff; }
+      .fx-deny { background: #e5e7eb; color: #111827; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>画面遷移のあとに出る 2 回目のバナー（SPA）</h1>
+      <p>
+        1 枚目のバナーが処理されたあと、<strong>「記事へ移動」で <code>history.pushState</code></strong> を呼び、
+        新しい画面で 2 枚目のバナーを出します。パスが変わったので
+        <strong>1 秒後に監視がやり直され</strong>、2 枚目も処理されます
+        （クエリだけを変えるボタンでは再実行されません）。
+      </p>
+      <p>
+        <code>?mode=accept</code> を付けると「同意する」が押されます（クエリは遷移先にも引き継ぎます）。
+        遷移後の URL は実在しないパスなので、リロードすると 404 になります。
+      </p>
+      <div class="fx-nav">
+        <button id="fx-go-article">記事へ移動（pushState）</button>
+        <button id="fx-go-query">クエリだけ変える（再実行しない）</button>
+      </div>
+      <p class="fx-screen" id="fx-screen">いまの画面: トップ</p>
+      <pre id="log"></pre>
+    </main>
+
+    <div class="fx-cookie-bar" id="fx-cookie-bar">
+      <p>当サイトでは Cookie を使用しています。</p>
+      <button class="fx-agree">同意する</button>
+      <button class="fx-deny">拒否</button>
+    </div>
+
+    <script>
+      (function () {
+        var log = document.getElementById('log');
+        function record(text) {
+          log.textContent += '[' + new Date().toLocaleTimeString('ja-JP') + '] ' + text + '\n';
+        }
+        document.addEventListener(
+          'click',
+          function (event) {
+            var el = event.target.closest('button, a, [role="button"]');
+            if (el) record('クリック: ' + (el.textContent || '').trim());
+          },
+          true,
+        );
+
+        var screen = document.getElementById('fx-screen');
+        var counter = 0;
+
+        /** 同意画面を 1 枚出す（押されたら自分で消える） */
+        function showBanner(id) {
+          var bar = document.createElement('div');
+          bar.className = 'fx-cookie-bar';
+          bar.id = id;
+          bar.innerHTML =
+            '<p>当サイトでは Cookie を使用しています。</p>' +
+            '<button class="fx-agree">同意する</button>' +
+            '<button class="fx-deny">拒否</button>';
+          document.body.appendChild(bar);
+          record('同意画面を表示しました: ' + id);
+          return bar;
+        }
+
+        /** どのバナーでも、押されたら消える */
+        document.addEventListener(
+          'click',
+          function (event) {
+            var button = event.target.closest('.fx-cookie-bar button');
+            if (!button) return;
+            var bar = button.closest('.fx-cookie-bar');
+            record((button.textContent || '').trim() + ' -> バナーを閉じました: ' + bar.id);
+            bar.remove();
+          },
+          true,
+        );
+
+        document.getElementById('fx-go-article').addEventListener('click', function () {
+          counter++;
+          // `?mode=accept` などのクエリは遷移先にも引き継ぐ（fixtures の設定上書き用）
+          history.pushState({}, '', location.pathname + '/article-' + counter + location.search);
+          screen.textContent = 'いまの画面: 記事 ' + counter + '（' + location.pathname + '）';
+          record('pushState でパスを変えました: ' + location.pathname);
+          showBanner('fx-cookie-bar-' + counter);
+        });
+
+        document.getElementById('fx-go-query').addEventListener('click', function () {
+          var params = new URLSearchParams(location.search);
+          params.set('tab', String(Date.now() % 100));
+          history.pushState({}, '', location.pathname + '?' + params.toString());
+          screen.textContent = 'いまの画面: 同じページ（' + location.search + '）';
+          record('pushState でクエリだけ変えました: ' + location.search);
+          showBanner('fx-cookie-bar-query');
+        });
+      })();
+    </script>
+  </body>
+</html>

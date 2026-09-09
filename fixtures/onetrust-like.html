@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <title>fixture: OneTrust 風</title>
+    <script src="/content.js"></script>
+    <style>
+      body { margin: 0; font: 15px/1.8 system-ui, -apple-system, 'Hiragino Sans', sans-serif; }
+      main { padding: 24px; max-width: 720px; }
+      pre { background: #f3f4f6; padding: 12px; border-radius: 8px; min-height: 3em; }
+      #onetrust-banner-sdk {
+        position: fixed; left: 0; right: 0; bottom: 0; padding: 20px 24px;
+        background: #fff; border-top: 1px solid #d1d5db; display: flex; gap: 12px; flex-wrap: wrap; align-items: center;
+      }
+      #onetrust-banner-sdk p { margin: 0; flex: 1 1 320px; }
+      #onetrust-banner-sdk button { padding: 10px 16px; border: 1px solid #111827; border-radius: 4px; background: #fff; cursor: pointer; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>OneTrust 風の id 構造</h1>
+      <p>即決 CMP 表（cmpQuick）で処理されます。reject では <code>#onetrust-reject-all-handler</code>、accept では <code>#onetrust-accept-btn-handler</code>。</p>
+      <pre id="log"></pre>
+    </main>
+
+    <div id="onetrust-consent-sdk">
+      <div id="onetrust-banner-sdk">
+        <p>当社は Cookie を使用してサイトの利用状況を分析しています。</p>
+        <button id="onetrust-pc-btn-handler">Cookie 設定</button>
+        <button id="onetrust-reject-all-handler">すべて拒否</button>
+        <button id="onetrust-accept-btn-handler">すべて受け入れる</button>
+      </div>
+    </div>
+
+    <script>
+      (function () {
+        var log = document.getElementById('log');
+        function record(text) {
+          log.textContent += '[' + new Date().toLocaleTimeString('ja-JP') + '] ' + text + '\n';
+        }
+        document.addEventListener(
+          'click',
+          function (event) {
+            var el = event.target.closest('button, a, [role="button"], input');
+            if (el) record('クリック: ' + (el.textContent || el.value || '').trim());
+          },
+          true,
+        );
+        var sdk = document.getElementById('onetrust-consent-sdk');
+        sdk.addEventListener('click', function (event) {
+          var el = event.target.closest('button');
+          if (!el || el.id === 'onetrust-pc-btn-handler') return;
+          record('バナーを閉じました');
+          sdk.remove();
+        });
+      })();
+    </script>
+  </body>
+</html>

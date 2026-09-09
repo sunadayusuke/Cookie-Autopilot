@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <title>fixture: 高さ 0 の shadow ホスト + 許可ボタンだけ</title>
+    <script src="/content.js"></script>
+    <style>
+      body { margin: 0; font: 15px/1.8 system-ui, -apple-system, 'Hiragino Sans', sans-serif; }
+      main { padding: 24px; max-width: 720px; }
+      pre { background: #f3f4f6; padding: 12px; border-radius: 8px; min-height: 3em; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>高さ 0 の shadow ホスト + 許可ボタンだけ</h1>
+      <p>
+        実サイト（deepl.com）の構造を写したもの。<code>ASIDE#usercentrics-cmp-ui</code> は
+        自身の高さが 0 で、open shadow root の中に説明文・「さらに詳しく」・「すべて許可」が
+        <strong>兄弟として</strong>並びます。拒否ボタンはありません。
+      </p>
+      <p>reject では「すべて許可」を押さずに非表示、accept では「すべて許可」が押されます。</p>
+      <pre id="log"></pre>
+    </main>
+
+    <aside id="usercentrics-cmp-ui"></aside>
+
+    <script>
+      (function () {
+        var log = document.getElementById('log');
+        function record(text) {
+          log.textContent += '[' + new Date().toLocaleTimeString('ja-JP') + '] ' + text + '\n';
+        }
+        document.addEventListener(
+          'click',
+          function (event) {
+            var el = event.target.closest('button, a, [role="button"], input');
+            if (el) record('クリック: ' + (el.textContent || el.value || '').trim());
+          },
+          true,
+        );
+
+        var host = document.getElementById('usercentrics-cmp-ui');
+        var root = host.attachShadow({ mode: 'open' });
+        root.innerHTML = [
+          '<style>',
+          '  :host { display: block; height: 0; }',
+          '  #uc-main-dialog {',
+          '    position: fixed; left: 50%; top: 140px; transform: translateX(-50%);',
+          '    box-sizing: border-box; width: 460px; padding: 24px 24px 8px;',
+          '    background: #fff; border-radius: 12px 12px 0 0; font: 14px/1.8 system-ui, sans-serif;',
+          '    box-shadow: 0 12px 40px rgba(15, 23, 42, 0.25);',
+          '  }',
+          '  #uc-more-link {',
+          '    position: fixed; left: 50%; top: 268px; transform: translateX(-50%);',
+          '    box-sizing: border-box; width: 460px; padding: 0 24px 12px;',
+          '    background: #fff; color: #2563eb; font: 13px/1.8 system-ui, sans-serif;',
+          '    text-decoration: underline; cursor: pointer;',
+          '  }',
+          '  #accept {',
+          '    position: fixed; left: 50%; top: 302px; transform: translateX(-50%);',
+          '    box-sizing: border-box; width: 460px; margin: 0; padding: 14px 24px 24px;',
+          '    background: #fff; border: 0; border-radius: 0 0 12px 12px;',
+          '    font: 15px/1.4 system-ui, sans-serif; color: #0b5cff; cursor: pointer;',
+          '    box-shadow: 0 12px 40px rgba(15, 23, 42, 0.25);',
+          '  }',
+          '</style>',
+          '<div id="uc-main-dialog" role="dialog">',
+          '  <strong>プライバシー設定</strong>',
+          '  <p>当社は Cookie を利用して、サービスの提供やコンテンツの最適化、広告の表示を行っています。',
+          '  詳細はプライバシーポリシーをご確認ください。</p>',
+          '</div>',
+          '<a id="uc-more-link" role="button" href="#">さらに詳しく</a>',
+          '<button id="accept">すべて許可</button>',
+        ].join('\n');
+
+        // shadow の外から見ると event.target はホストに付け替えられるので、shadow root で受ける
+        root.addEventListener('click', function (event) {
+          var el = event.composedPath()[0];
+          if (!el || (el.tagName !== 'BUTTON' && el.tagName !== 'A')) return;
+          record('クリック: ' + el.textContent.trim());
+          if (el.id !== 'accept') return;
+          record('バナーを閉じました');
+          host.remove();
+        });
+      })();
+    </script>
+  </body>
+</html>

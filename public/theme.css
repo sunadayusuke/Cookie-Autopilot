@@ -1,0 +1,1126 @@
+/* Cookie Autopilot 共通デザイントークン + 共通コンポーネント（popup / options 共用）。
+   基準は docs/DESIGN.md（既存プロダクトの実装が原典）。ライトモード固定
+   （prefers-color-scheme: dark の分岐は置かない）。
+   popup.css / options.css は画面固有のレイアウトのみを持ち、色・形・モーションはすべてここに集約する。 */
+
+:root {
+  color-scheme: light;
+
+  /* ---- 色（zinc ランプ。DESIGN.md §1） ---- */
+  --wb-0: #ffffff;
+  --wb-50: #f3f4f4;
+  --wb-100: #e7e7e9;
+  --wb-200: #dcdce0;
+  --wb-300: #ceced3;
+  --wb-400: #9f9fa9;
+  --wb-500: #71717b;
+  --wb-600: #52525c;
+  --wb-700: #3f3f46;
+  --wb-800: #27272a;
+  --wb-900: #18181b;
+  --wb-950: #0c0c10;
+  --wb-green: #0dca7a;
+
+  /* インクアルファ（rgba(12,12,16,x)） */
+  --ink-a5: rgba(12, 12, 16, 0.05);
+  --ink-a12: rgba(12, 12, 16, 0.12);
+  --ink-a26: rgba(12, 12, 16, 0.26);
+  --ink-a46: rgba(12, 12, 16, 0.46);
+  --ink-a64: rgba(12, 12, 16, 0.64);
+
+  /* セマンティック */
+  --bg-page: var(--wb-50);
+  --bg-surface: var(--wb-0);
+  --bg-row: var(--wb-50);
+  --fg: var(--wb-900);
+  --fg-secondary: var(--wb-700);
+  --fg-muted: var(--wb-500);
+  --fg-label: var(--ink-a46);
+  --border: var(--wb-200);
+  --hairline: var(--wb-100);
+  --border-row: var(--ink-a5);
+  --accent: var(--wb-900);
+  --accent-hover: var(--wb-800);
+  --accent-active: var(--wb-950);
+  --on-accent: var(--wb-0);
+  --focus-ring: var(--wb-900);
+
+  /* 状態色（別プロダクトから借用。淡背景 + 濃文字のペア） */
+  --success-fg: #1d8b56;
+  --success-bg: #e6f5ec;
+  --warning-fg: #c74700;
+  --warning-bg: #ffeee2;
+  --danger-fg: #ce0000;
+  --danger-bg: #fdeeee;
+  --info-fg: #0066be;
+  --info-bg: #f0f9ff;
+  --neutral-fg: #4d4d4d;
+  --neutral-bg: #f2f2f2;
+
+  /* ---- フォント ---- */
+  --font-sans:
+    'Gen Interface JP', -apple-system, BlinkMacSystemFont, 'Hiragino Kaku Gothic ProN', 'Noto Sans JP',
+    'Helvetica Neue', Arial, sans-serif;
+  --font-mono: ui-monospace, 'SF Mono', 'Fira Code', 'Roboto Mono', monospace;
+
+  /* ---- 形状（DESIGN.md §1「形状・影・余白」） ---- */
+  --radius-control: 10px; /* ボタン・入力 */
+  --radius-row: 12px; /* 行・Select */
+  --radius-card: 16px; /* カード・ダイアログ */
+  --radius-pill: 9999px; /* セグメント・PushButton */
+  --radius-xs: 6px; /* 小要素（× ボタン等） */
+
+  /* ---- 影 ---- */
+  --shadow-row: 0 2px 2px 0 rgba(0, 0, 0, 0.02);
+  --shadow-card: 0 4px 20px -8px rgba(0, 0, 0, 0.08);
+  --shadow-pill: 0 2px 36px -8px rgba(0, 0, 0, 0.16);
+  --shadow-segment-active: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.06));
+  --shadow-popover:
+    0 8px 28px rgba(12, 12, 16, 0.14),
+    0 2px 8px rgba(12, 12, 16, 0.08);
+
+  /* ---- 余白（4px グリッド。主役 8/12/16/20/24） ---- */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-2-5: 10px;
+  --space-3: 12px;
+  --space-3-5: 14px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+
+  /* ---- モーション ---- */
+  --ease-standard: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --duration-color: 140ms;
+  --duration-move: 260ms;
+}
+
+/* ---------------------------------------------------------------------------
+   リセット・ベース
+   --------------------------------------------------------------------------- */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-sans);
+  color: var(--fg);
+  background: var(--bg-surface);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+h1,
+h2,
+p,
+ul,
+li {
+  margin: 0;
+  padding: 0;
+}
+
+ul {
+  list-style: none;
+}
+
+/* [hidden] は多くのコンポーネントクラスが display を明示指定するため、UA 既定の
+   `[hidden] { display: none }` と詳細度が同点になり後勝ちで無効化されることがある。
+   hidden 属性を確実に効かせるためここで底上げする。 */
+[hidden] {
+  display: none !important;
+}
+
+/* フィールドセットは <legend role="radiogroup"> パターンのアクセシビリティ用ラッパーとして使う。
+   display: contents で自身をレイアウトから消し、子要素が親の flex/grid にそのまま参加する。 */
+fieldset {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+  display: contents;
+}
+
+button,
+input,
+select {
+  font-family: inherit;
+  color: inherit;
+}
+
+a {
+  color: inherit;
+}
+
+:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+/* 視覚的に隠す（キーボード操作・スクリーンリーダーには残す） */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* 通知バナー（「拡張として読み込むと有効になります」等。warning ペア） */
+.notice {
+  padding: var(--space-3);
+  border-radius: var(--radius-control);
+  background: var(--warning-bg);
+  color: var(--warning-fg);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+/* ---------------------------------------------------------------------------
+   Button（DESIGN.md §2）
+   h40 / px16 / 14px 500 / radius10。variant: primary/outline/secondary/ghost/destructive。
+   size: 既定(h40) / sm(h32,px12,13px) / xs(h28,px10,12px)
+   --------------------------------------------------------------------------- */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  height: 40px;
+  padding: 0 var(--space-4);
+  border: none;
+  border-radius: var(--radius-control);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background-color var(--duration-color) ease,
+    color var(--duration-color) ease,
+    border-color var(--duration-color) ease;
+}
+
+.btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.btn-sm {
+  height: 32px;
+  padding: 0 var(--space-3);
+  font-size: 13px;
+}
+
+.btn-xs {
+  height: 28px;
+  padding: 0 var(--space-2-5);
+  font-size: 12px;
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+.btn-primary:hover:not(:disabled) {
+  background: var(--accent-hover);
+}
+.btn-primary:active:not(:disabled) {
+  background: var(--accent-active);
+}
+
+.btn-outline {
+  background: var(--wb-0);
+  color: var(--fg);
+  border: 1px solid var(--border);
+}
+.btn-outline:hover:not(:disabled) {
+  background: var(--wb-50);
+}
+.btn-outline:active:not(:disabled) {
+  background: var(--wb-100);
+}
+
+.btn-secondary {
+  background: var(--wb-50);
+  color: var(--fg);
+}
+.btn-secondary:hover:not(:disabled) {
+  background: var(--wb-100);
+}
+.btn-secondary:active:not(:disabled) {
+  background: var(--wb-200);
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--fg);
+}
+.btn-ghost:hover:not(:disabled) {
+  background: var(--wb-50);
+}
+.btn-ghost:active:not(:disabled) {
+  background: var(--wb-100);
+}
+
+.btn-destructive {
+  background: var(--danger-fg);
+  color: var(--wb-0);
+}
+.btn-destructive:hover:not(:disabled) {
+  background: #d31a1a; /* danger-fg の上に白 10% を重ねた近似値 */
+}
+
+/* ---------------------------------------------------------------------------
+   PushButton（主要 CTA、ピル。DESIGN.md §2）
+   h36 / px16 / 13px 600 / radius 9999 / blur(20px) / active scale(.98)
+   --------------------------------------------------------------------------- */
+
+.push-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  height: 36px;
+  padding: 0 var(--space-4);
+  border-radius: var(--radius-pill);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  box-shadow: var(--shadow-pill);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  transition:
+    background-color 100ms ease,
+    opacity 100ms ease,
+    transform 100ms ease;
+}
+/* 一段大きいサイズ（既存プロダクトの md 相当）。初期設定ページの主ボタンに使う */
+.push-btn-lg {
+  height: 44px;
+  padding: 0 var(--space-5);
+  font-size: 15px;
+}
+.push-btn:active:not(:disabled) {
+  transform: scale(0.98);
+}
+.push-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.push-btn-dark {
+  background: var(--wb-900);
+  color: var(--wb-0);
+  border: 1px solid var(--ink-a12);
+}
+.push-btn-dark:hover:not(:disabled) {
+  background: var(--wb-800);
+}
+.push-btn-dark:active:not(:disabled) {
+  background: var(--wb-950);
+}
+
+.push-btn-light {
+  background: var(--wb-0);
+  color: var(--wb-900);
+  border: 1px solid var(--ink-a12);
+}
+.push-btn-light:hover:not(:disabled) {
+  background: var(--wb-50);
+}
+.push-btn-light:active:not(:disabled) {
+  background: var(--wb-100);
+}
+
+/* ---------------------------------------------------------------------------
+   ControlRow（設定 1 行。DESIGN.md §2）
+   h40 / radius12 / bg --bg-row / 枠1px --border-row / 影 shadow-row / pl16 pr14
+   --------------------------------------------------------------------------- */
+
+.control-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  row-gap: var(--space-2);
+  column-gap: var(--space-2);
+  min-height: 40px;
+  border-radius: var(--radius-row);
+  background: var(--bg-row);
+  border: 1px solid var(--border-row);
+  box-shadow: var(--shadow-row);
+  /* 左右のみ padding（pl16 pr14）。上下は付けず、min-height 40 + align-items:center で
+     1 行に収まる場合はちょうど 40px、ButtonSelect が折り返す 2 段時だけ自然に伸びる */
+  padding: 0 14px 0 var(--space-4);
+}
+
+.control-row-label {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 14px;
+  line-height: 1.4;
+  color: var(--fg-label);
+  overflow-wrap: anywhere;
+}
+
+/* ControlRow をそのままボタンにした行（ドリルダウン用。docs/SPEC.md §14.9）。
+   見た目は ControlRow のままで、hover / active だけ背景を 1 段濃くする。 */
+
+.row-button {
+  width: 100%;
+  font-family: inherit;
+  font-size: inherit;
+  color: var(--fg);
+  text-align: left;
+  cursor: pointer;
+  transition: background-color var(--duration-color) ease;
+}
+
+.row-button:hover:not(:disabled) {
+  background: var(--wb-100);
+}
+
+.row-button:active:not(:disabled) {
+  background: var(--wb-200);
+}
+
+.row-button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ---------------------------------------------------------------------------
+   ButtonSelect（セグメント。DESIGN.md §2）
+   外枠 radius9999 / bg rgba(255,255,255,.7) / 枠1px 白 / padding3。
+   項目 h22 / px6 / 12px 600 / radius9999。非選択 opacity.4 → hover .7、
+   選択 bg白 + drop-shadow + opacity1。ラジオは視覚的に隠し、外枠に :focus-visible リング。
+   --------------------------------------------------------------------------- */
+
+.btn-select {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1px;
+  border-radius: var(--radius-pill);
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid var(--wb-0);
+  padding: 3px;
+  user-select: none;
+}
+
+.btn-select:has(.btn-select-input:focus-visible) {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.btn-select-option {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: var(--radius-pill);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--fg);
+  opacity: 0.4;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    opacity 120ms ease,
+    background-color 120ms ease;
+}
+
+.btn-select-option:hover {
+  opacity: 0.7;
+}
+
+.btn-select-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.btn-select-input:checked + .btn-select-option {
+  background: var(--wb-0);
+  filter: var(--shadow-segment-active);
+  opacity: 1;
+}
+
+.btn-select-input:disabled + .btn-select-option {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+/* :checked と :disabled は詳細度が同点で後勝ちになるため、選択中かつ無効の状態を
+   明示的に上書きする（選択中であることが分かる程度の不透明度は残す） */
+.btn-select-input:checked:disabled + .btn-select-option {
+  opacity: 0.6;
+}
+
+/* ---------------------------------------------------------------------------
+   ToggleSwitch（DESIGN.md §2）
+   トラック36×20、つまみ16×16（inset2）。OFF wb-300、ON wb-green。
+   トラック220ms ease、つまみ240ms cubic-bezier(.22,.61,.36,1)。
+   <button role="switch" aria-checked> + 内側の .toggle-thumb で実装。
+   --------------------------------------------------------------------------- */
+
+.toggle {
+  position: relative;
+  flex: none;
+  display: inline-flex;
+  width: 36px;
+  height: 20px;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-pill);
+  background: var(--wb-300);
+  cursor: pointer;
+  transition: background-color 220ms ease;
+}
+
+.toggle[aria-checked='true'] {
+  background: var(--wb-green);
+}
+
+.toggle:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.toggle-thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: var(--radius-pill);
+  background: var(--wb-0);
+  box-shadow:
+    0 1px 2px rgba(12, 12, 16, 0.22),
+    0 1px 3px rgba(12, 12, 16, 0.1);
+  transition: transform 240ms var(--ease-standard);
+}
+
+.toggle[aria-checked='true'] .toggle-thumb {
+  transform: translateX(16px);
+}
+
+/* ---------------------------------------------------------------------------
+   Input / Select（DESIGN.md §2）
+   h40 / radius10 / px14 / 13px / bg wb-50 枠なし / hover wb-100 /
+   focus box-shadow 0 0 0 2px --focus-ring / placeholder wb-400
+   --------------------------------------------------------------------------- */
+
+.input {
+  height: 40px;
+  width: 100%;
+  min-width: 0;
+  border: none;
+  border-radius: var(--radius-control);
+  padding: 0 var(--space-3-5);
+  font-size: 13px;
+  background: var(--wb-50);
+  color: var(--fg);
+  outline: none;
+  transition:
+    background-color var(--duration-color) ease,
+    box-shadow var(--duration-color) ease;
+}
+
+.input:hover:not(:disabled) {
+  background: var(--wb-100);
+}
+
+.input:focus-visible {
+  background: var(--wb-50);
+  box-shadow: 0 0 0 2px var(--focus-ring);
+}
+
+.input::placeholder {
+  color: var(--wb-400);
+}
+
+.input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ---------------------------------------------------------------------------
+   Select（ネイティブ select。popup の「このサイトの設定」で使用）
+   Input と見た目は同じだが、DESIGN.md 冒頭の形状トークンで「行・Select」が
+   --radius-row（12px）に分類されているため、そちらに合わせる（Input/Select
+   コンポーネント欄の radius10 とは別扱い。docs/DESIGN.md 参照）。
+   --------------------------------------------------------------------------- */
+
+.select {
+  height: 40px;
+  width: 100%;
+  min-width: 0;
+  border: none;
+  border-radius: var(--radius-row);
+  padding: 0 var(--space-3-5);
+  font-size: 13px;
+  background: var(--wb-50);
+  color: var(--fg);
+  outline: none;
+  cursor: pointer;
+  transition:
+    background-color var(--duration-color) ease,
+    box-shadow var(--duration-color) ease;
+}
+
+.select:hover:not(:disabled) {
+  background: var(--wb-100);
+}
+
+.select:focus-visible {
+  background: var(--wb-50);
+  box-shadow: 0 0 0 2px var(--focus-ring);
+}
+
+.select:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ---------------------------------------------------------------------------
+   Card（options。DESIGN.md §2）
+   bg白 / radius16 / 影 shadow-card / 罫線なし / padding20。
+   見出し15px 500。カード内の行区切りは 1px --hairline（.hairline-row で付与）。
+   --------------------------------------------------------------------------- */
+
+.card {
+  background: var(--bg-surface);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+  padding: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+/* 見出し（PanelSection の SectionTitle / Card 内見出し兼用。両方とも 15px 500） */
+.section-title {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--fg);
+}
+
+.hairline-row {
+  border-bottom: 1px solid var(--hairline);
+}
+.hairline-row:last-child {
+  border-bottom: none;
+}
+
+/* ---------------------------------------------------------------------------
+   PresetCard（プリセット選択カード。docs/SPEC.md §14.3 / §14.5、src/ui/presetPicker.ts
+   が onboarding / options で共用して生成する）
+   非選択は --bg-row 地 + 枠 1px --border-row、選択は白地 + 枠 1px --wb-900 + shadow-row。
+   ButtonSelect の「グレー地に白チップ」と同じ選択表現をカード単位にしたもの（docs/DESIGN.md）。
+   --------------------------------------------------------------------------- */
+
+.preset-picker {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+/* 非選択も白地（グレー地はチップの淡色と被り、押せなさそうに見える）。選択は枠を太くして示す */
+.preset-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  border-radius: var(--radius-card);
+  background: var(--wb-0);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  transition:
+    border-color var(--duration-color) ease,
+    box-shadow var(--duration-color) ease;
+}
+
+.preset-card:hover {
+  border-color: var(--wb-400);
+}
+
+.preset-card:has(.preset-card-input:checked) {
+  border-color: var(--wb-900);
+  box-shadow: inset 0 0 0 1px var(--wb-900); /* 枠を 2px 相当に。inset なのでレイアウトは動かない */
+}
+
+.preset-card:has(.preset-card-input:checked):hover {
+  border-color: var(--wb-900);
+}
+
+.preset-card:has(.preset-card-input:focus-visible) {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.preset-card:has(.preset-card-input:disabled) {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.preset-card-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.preset-card-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--fg);
+}
+
+.preset-card-desc {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--fg-secondary);
+}
+
+/* 4 つ目（すべて拒否）。主要な 3 つより一段小さくし、チップは出さない（§14.3） */
+.preset-card-compact {
+  gap: var(--space-1);
+  padding: var(--space-3);
+}
+
+.preset-card-compact .preset-card-name {
+  font-size: 13px;
+}
+
+.preset-card-compact .preset-card-desc {
+  font-size: 12px;
+  color: var(--fg-muted);
+}
+
+/* ---------------------------------------------------------------------------
+   CategoryTable（カテゴリ表。docs/SPEC.md §14.2、src/ui/categoryTable.ts が
+   onboarding / options で共用して生成する）
+   「必要なもの」+ 6 カテゴリを <details> アコーディオンで並べ、列見出しは
+   「しっかり守る / ほどよく守る / ゆるく守る」の ✓／— マーク列（各 56px）。
+   options では createCategoryTable({ toggles }) でもう 1 列「あなたの設定」を足し、
+   同じ 56px の列に ToggleSwitch（36×20）を中央揃えで置く。
+   --------------------------------------------------------------------------- */
+
+.category-table {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+/* ---- 列見出し（しっかり守る / ほどよく守る / ゆるく守る + あなたの設定）----
+   各行（.category-marks / .category-toggle-col）と同じ幅・gap で列を揃える。 */
+
+.category-legend {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 0 0 0 var(--space-5);
+}
+
+.category-legend-label {
+  flex: 1 1 auto;
+}
+
+.category-legend-cols {
+  display: flex;
+  flex: none;
+  gap: var(--space-2);
+}
+
+.category-legend-col {
+  flex: none;
+  width: 56px;
+  text-align: center;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--fg-muted);
+  white-space: nowrap;
+}
+
+/* 「あなたの設定」は 4 文字より長いので折り返しを許す（56px 幅からのはみ出し防止） */
+.category-legend-col-toggle {
+  white-space: normal;
+}
+
+/* ---- アコーディオン（7 行）---- */
+
+.category-accordion {
+  display: flex;
+  flex-direction: column;
+}
+
+.category-row {
+  border-bottom: 1px solid var(--hairline);
+}
+
+.category-row:last-child {
+  border-bottom: none;
+}
+
+.category-summary {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) 0;
+  cursor: pointer;
+  list-style: none;
+}
+
+.category-summary::-webkit-details-marker {
+  display: none;
+}
+
+.category-chevron {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.category-chevron::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-right: 1.5px solid var(--fg-muted);
+  border-bottom: 1.5px solid var(--fg-muted);
+  transform: rotate(45deg);
+  transition: transform var(--duration-move) var(--ease-standard);
+}
+
+.category-row[open] .category-chevron::before {
+  transform: rotate(-135deg);
+}
+
+.category-summary-main {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.category-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--fg);
+}
+
+.category-short {
+  font-size: 12px;
+  color: var(--fg-muted);
+}
+
+.category-marks {
+  flex: none;
+  display: flex;
+  gap: var(--space-2);
+}
+
+.category-mark {
+  flex: none;
+  width: 56px;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.category-mark-allow {
+  color: var(--success-fg);
+}
+
+.category-mark-deny {
+  color: var(--fg-muted);
+}
+
+/* 「あなたの設定」列（options のみ）。マーク列と同じ 56px 幅の中央に
+   ToggleSwitch（36×20）または固定の ✓ を置く */
+.category-toggle-col {
+  flex: none;
+  width: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.category-fixed-mark {
+  width: 36px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--success-fg);
+}
+
+.category-description {
+  padding: 0 0 var(--space-3) calc(16px + var(--space-3));
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--fg-muted);
+}
+
+/* ---------------------------------------------------------------------------
+   CategoryToggles（項目ごとのトグル行。docs/SPEC.md §14.9、src/ui/categoryToggles.ts）
+   幅 320 の popup 用。h40 の行に「表示名 14px + 一言 12px muted」と ToggleSwitch を並べ、
+   行＋説明をまとめた .category-toggle-item に 1px --hairline の区切り（.hairline-row）。
+   「必要なもの」は .category-fixed-mark の ✓。
+   表示名＋一言は .category-toggle-trigger（開閉ボタン）にし、押すと直下に説明文を開く。
+   シェブロンの見た目（.category-chevron）と説明文の見た目（.category-description）は
+   CategoryTable と共通のクラスを流用し、回転だけ aria-expanded 用に別途定義する
+   （<details> は使わず、右のトグルと独立して開閉できるようにするため）。
+   --------------------------------------------------------------------------- */
+
+.category-toggles {
+  display: flex;
+  flex-direction: column;
+}
+
+.category-toggle-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 40px;
+}
+
+.category-toggle-trigger {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 0;
+  border: none;
+  background: none;
+  font-family: inherit;
+  font-size: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.category-toggle-trigger[aria-expanded='true'] .category-chevron::before {
+  transform: rotate(-135deg);
+}
+
+.category-toggle-main {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.category-toggle-name {
+  font-size: 14px;
+  line-height: 1.3;
+  color: var(--fg);
+}
+
+.category-toggle-short {
+  font-size: 12px;
+  line-height: 1.3;
+  color: var(--fg-muted);
+}
+
+/* ---------------------------------------------------------------------------
+   Badge（状態表示。DESIGN.md §2）
+   radius9999 / px10 py4 / 12px 600 / 状態色ペア
+   --------------------------------------------------------------------------- */
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  border-radius: var(--radius-pill);
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+.badge-success {
+  color: var(--success-fg);
+  background: var(--success-bg);
+}
+.badge-warning {
+  color: var(--warning-fg);
+  background: var(--warning-bg);
+}
+.badge-danger {
+  color: var(--danger-fg);
+  background: var(--danger-bg);
+}
+.badge-info {
+  color: var(--info-fg);
+  background: var(--info-bg);
+}
+.badge-neutral {
+  color: var(--neutral-fg);
+  background: var(--neutral-bg);
+}
+
+/* ---------------------------------------------------------------------------
+   Chip（カテゴリの許可/拒否タグ。プリセットカード・popup の結果表示で使用）
+   Badge と同じ radius-pill を使うが、数が並ぶ場面向けに一回り小さく・軽い weight。
+   --------------------------------------------------------------------------- */
+
+.chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: var(--radius-pill);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.chip-allow {
+  background: var(--success-bg);
+  color: var(--success-fg);
+}
+
+.chip-deny {
+  background: var(--wb-50);
+  color: var(--fg-muted);
+}
+/* プリセットカードのタグ。並ぶのは許可する項目だけで対比が無いため、色に意味を持たせない */
+.chip-neutral {
+  background: var(--wb-100);
+  color: var(--fg);
+}
+
+/* ---------------------------------------------------------------------------
+   区切り（DESIGN.md §2）: セクション間は1px --border、カード内は1px --hairline
+   --------------------------------------------------------------------------- */
+
+.divider {
+  border: none;
+  border-top: 1px solid var(--border);
+}
+
+/* 状態色ユーティリティ（HUD 以外でも失敗・警告テキストに使う） */
+.text-danger {
+  color: var(--danger-fg);
+}
+.text-warning {
+  color: var(--warning-fg);
+}
+
+/* ---------------------------------------------------------------------------
+   通知（HUD。保存しました／エラー。DESIGN.md §2）
+   radius18 / padding 14 18 / 13px / bg rgba(255,255,255,.85) + blur(20px) /
+   枠1px rgba(12,12,16,.08) / 影 shadow-pill / fade in120ms・out180ms / 1.2秒で自動消滅。
+   options では右下固定（.hud-fixed）、popup ではフッター内に inline 表示。
+   --------------------------------------------------------------------------- */
+
+.hud {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  border-radius: 18px;
+  padding: 14px 18px;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--fg);
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(12, 12, 16, 0.08);
+  box-shadow: var(--shadow-pill);
+  opacity: 0;
+  transform: translateY(4px);
+  transition:
+    opacity 180ms ease,
+    transform 180ms ease;
+  pointer-events: none;
+}
+
+.hud.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+  transition:
+    opacity 120ms ease,
+    transform 120ms ease;
+  pointer-events: auto;
+}
+
+.hud.is-danger {
+  color: var(--danger-fg);
+}
+
+.hud-fixed {
+  position: fixed;
+  right: var(--space-6);
+  bottom: var(--space-6);
+  z-index: 1000;
+  max-width: 320px;
+}
+
+/* onboarding: 画面下部中央固定（docs/SPEC.md §14.3。options の hud-fixed は右下固定）。
+   translateX ではなく left/right + margin auto で中央寄せする（.hud / .hud.is-visible が
+   フェード用に transform: translateY(...) を使っているため、transform を奪い合わない） */
+.hud-fixed-center {
+  position: fixed;
+  left: var(--space-5);
+  right: var(--space-5);
+  bottom: var(--space-6);
+  z-index: 1000;
+  width: fit-content;
+  max-width: 400px;
+  margin: 0 auto;
+}
+
+/* ---------------------------------------------------------------------------
+   モーション低減
+   --------------------------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

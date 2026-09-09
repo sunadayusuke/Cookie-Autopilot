@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <title>fixture: リンクで作られた同意画面（断るボタンなし）</title>
+    <script src="/content.js"></script>
+    <style>
+      body { margin: 0; font: 15px/1.8 system-ui, -apple-system, 'Hiragino Sans', sans-serif; }
+      main { padding: 24px; max-width: 720px; }
+      pre { background: #f3f4f6; padding: 12px; border-radius: 8px; min-height: 3em; }
+      .fx-modal {
+        position: fixed; inset: 0; z-index: 20; display: flex; align-items: center; justify-content: center;
+        background: rgba(15, 23, 42, 0.55);
+      }
+      .fx-card {
+        width: 560px; max-width: calc(100% - 48px); padding: 32px; background: #fff; border-radius: 4px;
+        box-shadow: 0 24px 48px rgba(0, 0, 0, 0.3);
+      }
+      .fx-card h2 { margin: 0 0 12px; font-size: 20px; }
+      .fx-card p { margin: 0 0 16px; font-size: 14px; }
+      .fx-actions { display: flex; gap: 12px; justify-content: flex-end; margin-bottom: 16px; }
+      .fx-actions a {
+        padding: 10px 20px; border-radius: 2px; font-size: 14px; text-decoration: none;
+        background: #0078d6; color: #fff;
+      }
+      .fx-actions a.fx-secondary { background: #fff; color: #0078d6; border: 1px solid #0078d6; }
+      .fx-legal { margin: 0; font-size: 12px; }
+      .fx-legal a { color: #6b7280; margin-right: 12px; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>リンクで作られた同意画面（断るボタンなし）</h1>
+      <p>
+        決定ボタンが <code>&lt;button&gt;</code> ではなく <code>&lt;a href="…"&gt;</code>（実ページへのリンク）で
+        作られている同意画面です。reject モードでは断るボタンが無いので、
+        既定の fallback（<code>hide</code>）でモーダルに <code>display: none</code> が付きます。
+        <strong>「プライバシーポリシー」「インプリント」「設定」は押されないのが正解です。</strong>
+        <code>?mode=accept</code> では「全てに同意」が押されます。
+      </p>
+      <pre id="log"></pre>
+    </main>
+
+    <div class="fx-modal" id="fx-link-modal" role="dialog" aria-modal="true" aria-labelledby="fx-link-title">
+      <div class="fx-card">
+        <h2 id="fx-link-title">Cookie の使用について</h2>
+        <p>
+          当サイトでは Cookie を使用します。サイトを快適にご利用いただくために必要な Cookie のほか、
+          利用状況の分析や、お客様の関心に合わせた広告の配信のためにも Cookie を使用します。
+          設定はいつでも変更できます。
+        </p>
+        <div class="fx-actions">
+          <a class="fx-secondary" href="/settings">設定</a>
+          <a href="/consent/all" id="fx-agree">全てに同意</a>
+        </div>
+        <p class="fx-legal">
+          <a href="/privacy">プライバシーポリシー</a>
+          <a href="/imprint">インプリント</a>
+        </p>
+      </div>
+    </div>
+
+    <script>
+      (function () {
+        var log = document.getElementById('log');
+        function record(text) {
+          log.textContent += '[' + new Date().toLocaleTimeString('ja-JP') + '] ' + text + '\n';
+        }
+        // 実サイトではページ遷移するが、fixture では遷移させずにクリックだけ記録する
+        document.addEventListener(
+          'click',
+          function (event) {
+            var el = event.target.closest('button, a, [role="button"], input');
+            if (!el) return;
+            if (el.tagName === 'A') event.preventDefault();
+            record('クリック: ' + (el.textContent || el.value || '').trim());
+          },
+          true,
+        );
+        var modal = document.getElementById('fx-link-modal');
+        document.getElementById('fx-agree').addEventListener('click', function () {
+          record('同意画面を閉じました');
+          modal.remove();
+        });
+        record('待機中。何も押されず、モーダルが非表示になれば成功です。');
+      })();
+    </script>
+  </body>
+</html>

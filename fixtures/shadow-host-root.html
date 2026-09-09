@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <title>fixture: shadow ホスト自身が容器になるバナー</title>
+    <script src="/content.js"></script>
+    <style>
+      body { margin: 0; font: 15px/1.8 system-ui, -apple-system, 'Hiragino Sans', sans-serif; }
+      main { padding: 24px; max-width: 720px; }
+      pre { background: #f3f4f6; padding: 12px; border-radius: 8px; min-height: 3em; }
+      /* CMP のマウント点。position と id（cookie）を持つのはホスト側だけで、
+         shadow の中にはヒントになる属性も position も無い。
+         ＝ 容器はホスト自身になり、ボタンはホスト自身の shadow root の中にある */
+      #fx-cookie-root {
+        position: fixed; left: 24px; bottom: 24px; width: 380px;
+      }
+      /* jsdom の getText は textContent なので、ブラウザの innerText と同じものが
+         読めるように light DOM にも同じ趣旨の一文を置いてある（描画はされない） */
+      #fx-cookie-root .fx-noscript-note { display: none; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>shadow ホスト自身が容器になるバナー</h1>
+      <p>
+        <code>#fx-cookie-root</code> という空のマウント点に shadow root が付き、その直下に
+        バナーがあります。容器はホスト自身なので、ホストを起点に
+        <strong>自分の shadow root の中</strong>まで探せないとボタンが 1 つも見つかりません。
+      </p>
+      <p><code>?mode=accept</code> を付けると accept モードになります。</p>
+      <pre id="log"></pre>
+    </main>
+
+    <div id="fx-cookie-root"><span class="fx-noscript-note">Cookie の利用について</span></div>
+
+    <script>
+      (function () {
+        var log = document.getElementById('log');
+        function record(text) {
+          log.textContent += '[' + new Date().toLocaleTimeString('ja-JP') + '] ' + text + '\n';
+        }
+        var host = document.getElementById('fx-cookie-root');
+        var shadow = host.attachShadow({ mode: 'open' });
+        shadow.innerHTML = [
+          '<style>',
+          '.box { padding: 20px; background: #1f2937; color: #f9fafb; border-radius: 12px; }',
+          '.box p { margin: 0 0 12px; font-size: 14px; }',
+          '.box button { margin-right: 8px; padding: 10px 16px; border: 0; border-radius: 8px; cursor: pointer; }',
+          '.allow { background: #2563eb; color: #fff; }',
+          '.deny { background: #e5e7eb; color: #111827; }',
+          '</style>',
+          '<div class="box">',
+          '  <p>当サイトでは Cookie を使用して、利便性の向上とアクセス解析を行っています。</p>',
+          '  <button class="allow">すべて許可</button>',
+          '  <button class="deny">すべて拒否</button>',
+          '</div>',
+        ].join('\n');
+
+        shadow.addEventListener('click', function (event) {
+          var el = event.composedPath()[0];
+          if (!el || el.tagName !== 'BUTTON') return;
+          record('クリック: ' + el.textContent.trim());
+          record('バナーを閉じました');
+          var box = shadow.querySelector('.box');
+          if (box) box.remove();
+        });
+      })();
+    </script>
+  </body>
+</html>

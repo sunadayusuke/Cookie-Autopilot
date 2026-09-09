@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>fixture: position: static の英語バナー</title>
+    <script src="/content.js"></script>
+    <style>
+      body { margin: 0; font: 15px/1.8 system-ui, -apple-system, 'Hiragino Sans', sans-serif; }
+      main { padding: 24px; max-width: 720px; }
+      pre { background: #f3f4f6; padding: 12px; border-radius: 8px; min-height: 3em; }
+      /* fixed でも sticky でもない、ページ最上部のふつうのバー */
+      #cookie-banner {
+        position: static;
+        display: flex; gap: 12px; align-items: center; flex-wrap: wrap;
+        padding: 20px 24px; background: #111827; color: #f9fafb;
+      }
+      #cookie-banner p { margin: 0; flex: 1 1 320px; }
+      #cookie-banner button { padding: 10px 16px; border: 0; border-radius: 8px; font-size: 14px; cursor: pointer; }
+      .fx-accept { background: #2563eb; color: #fff; }
+      .fx-reject { background: #e5e7eb; color: #111827; }
+    </style>
+  </head>
+  <body>
+    <div id="cookie-banner">
+      <p>We use cookies to run this site and to understand how it is used.</p>
+      <button class="fx-accept">Accept</button>
+      <button class="fx-reject">Reject</button>
+    </div>
+
+    <main>
+      <h1>position: static の英語バナー</h1>
+      <p>
+        位置では容器候補にならないので、id の <code>cookie-banner</code>（属性ヒント）で検出されます。
+        reject では「Reject」、accept では「Accept」が押されます。
+      </p>
+      <p><code>?mode=accept</code> を付けると accept モードになります。</p>
+      <pre id="log"></pre>
+    </main>
+
+    <script>
+      (function () {
+        var log = document.getElementById('log');
+        function record(text) {
+          log.textContent += '[' + new Date().toLocaleTimeString('ja-JP') + '] ' + text + '\n';
+        }
+        document.addEventListener(
+          'click',
+          function (event) {
+            var el = event.target.closest('button, a, [role="button"], input');
+            if (el) record('クリック: ' + (el.textContent || el.value || '').trim());
+          },
+          true,
+        );
+        var banner = document.getElementById('cookie-banner');
+        banner.addEventListener('click', function (event) {
+          if (!event.target.closest('button')) return;
+          record('バナーを閉じました');
+          banner.remove();
+        });
+      })();
+    </script>
+  </body>
+</html>

@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>fixture: 誤クリック防止（ニュースレター）</title>
+    <script src="/content.js"></script>
+    <style>
+      body { margin: 0; font: 15px/1.8 system-ui, -apple-system, 'Hiragino Sans', sans-serif; }
+      main { padding: 24px; max-width: 720px; }
+      pre { background: #f3f4f6; padding: 12px; border-radius: 8px; min-height: 3em; }
+      .fx-newsletter {
+        position: fixed; left: 50%; top: 96px; transform: translateX(-50%); z-index: 10;
+        width: 460px; max-width: calc(100% - 48px); padding: 24px;
+        border-radius: 16px; background: #fff; color: #111827; box-shadow: 0 20px 40px rgba(0, 0, 0, 0.25);
+      }
+      .fx-newsletter h2 { margin: 0 0 8px; font-size: 20px; }
+      .fx-newsletter p { margin: 0 0 16px; }
+      .fx-newsletter .fx-actions { display: flex; gap: 12px; flex-wrap: wrap; }
+      .fx-newsletter button { padding: 10px 18px; border: 0; border-radius: 8px; font-size: 14px; cursor: pointer; }
+      .fx-subscribe { background: #2563eb; color: #fff; }
+      .fx-no { background: #e5e7eb; color: #111827; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>誤クリック防止（ニュースレター）</h1>
+      <p>
+        Cookie 固有語のない固定モーダルです。「No thanks」は拒否の弱一致ですが、
+        Cookie 固有語のある容器の中でしか使わないので<strong>何も押されない</strong>のが正解です。
+      </p>
+      <p><code>?mode=accept</code> を付けると accept モードになります。</p>
+      <pre id="log"></pre>
+    </main>
+
+    <div class="fx-newsletter" id="fx-newsletter">
+      <h2>Join our newsletter and get 10% off</h2>
+      <p>Weekly stories, straight to your inbox. We respect your privacy and you can opt out any time.</p>
+      <div class="fx-actions">
+        <button class="fx-subscribe">Subscribe</button>
+        <button class="fx-no">No thanks</button>
+      </div>
+    </div>
+
+    <script>
+      (function () {
+        var log = document.getElementById('log');
+        function record(text) {
+          log.textContent += '[' + new Date().toLocaleTimeString('ja-JP') + '] ' + text + '\n';
+        }
+        document.addEventListener(
+          'click',
+          function (event) {
+            var el = event.target.closest('button, a, [role="button"], input');
+            if (el) record('クリック（本来は起きないはず）: ' + (el.textContent || el.value || '').trim());
+          },
+          true,
+        );
+        record('待機中。何もクリックされなければ成功です。');
+      })();
+    </script>
+  </body>
+</html>

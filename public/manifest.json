@@ -1,0 +1,42 @@
+{
+  "manifest_version": 3,
+  "name": "Cookie Autopilot",
+  "version": "1.0.0",
+  "description": "Cookie の同意画面に、あなたの代わりに答えます。断るボタンを自動で押し、見つからなければ同意画面を非表示にします。",
+  "minimum_chrome_version": "102",
+  "permissions": ["storage", "activeTab", "alarms"],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Cookie Autopilot",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "options_ui": {
+    "page": "options.html",
+    "open_in_tab": true
+  },
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "run_at": "document_start",
+      "all_frames": true,
+      "match_about_blank": true,
+      "match_origin_as_fallback": true
+    }
+  ]
+}

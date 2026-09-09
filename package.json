@@ -1,0 +1,25 @@
+{
+  "name": "cookie-autopilot",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Cookie 同意バナーを方針どおりに自動処理する Chrome 拡張",
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "dev": "node scripts/build.mjs --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "rules:fetch": "node scripts/fetch-com-rules.mjs",
+    "icons": "node scripts/gen-icons.mjs",
+    "fixtures": "node scripts/serve-fixtures.mjs",
+    "package": "node scripts/package.mjs"
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.0.287",
+    "esbuild": "^0.24.0",
+    "jsdom": "^25.0.1",
+    "pngjs": "^7.0.0",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}

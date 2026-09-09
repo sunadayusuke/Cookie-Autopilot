@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <title>fixture: 誤クリック防止（カスタム要素）</title>
+    <script src="/content.js"></script>
+    <style>
+      body { margin: 0; font: 15px/1.8 system-ui, -apple-system, 'Hiragino Sans', sans-serif; }
+      main { padding: 24px; max-width: 720px; }
+      pre { background: #f3f4f6; padding: 12px; border-radius: 8px; min-height: 3em; }
+      .backdrop { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.4); }
+      .account-modal {
+        position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%);
+        width: 440px; padding: 24px; background: #fff; border-radius: 12px;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.25);
+      }
+      /* custom-element-buttons.html と同じ形のカスタム要素ボタン。
+         違いは容器に Cookie 固有語が無いことだけ */
+      x-btn {
+        display: inline-block; margin-right: 8px; padding: 10px 24px;
+        border: 1px solid #111827; border-radius: 8px; cursor: pointer; user-select: none;
+      }
+      .x-danger { background: #b91c1c; color: #fff; border-color: #b91c1c; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>誤クリック防止（カスタム要素）</h1>
+      <p>
+        <code>&lt;x-btn&gt;</code> の見た目も <code>cursor: pointer</code> も
+        <a href="/fixtures/custom-element-buttons.html">custom-element-buttons.html</a> と同じですが、
+        容器に <strong>Cookie 固有語がありません</strong>。緩い候補は Cookie 固有語ゲートの
+        内側でしか使わないので、ここでは何も候補になりません。
+      </p>
+      <p>reject / accept どちらでも何も起きず、モーダルがそのまま残るのが正解です。</p>
+      <pre id="log"></pre>
+    </main>
+
+    <div class="backdrop"></div>
+    <div class="account-modal account-consent-modal" id="account-modal">
+      <p>保存された個人情報を削除しますか？ 削除したデータは元に戻せません。</p>
+      <x-btn class="x-danger">削除する</x-btn>
+      <x-btn>キャンセル</x-btn>
+    </div>
+
+    <script>
+      (function () {
+        var log = document.getElementById('log');
+        function record(text) {
+          log.textContent += '[' + new Date().toLocaleTimeString('ja-JP') + '] ' + text + '\n';
+        }
+        document.addEventListener(
+          'click',
+          function (event) {
+            var el = event.target.closest('button, a, [role="button"], input, x-btn');
+            if (el) record('クリック（本来は起きないはず）: ' + (el.textContent || el.value || '').trim());
+          },
+          true,
+        );
+        record('待機中。モーダルがそのまま残れば成功です。');
+      })();
+    </script>
+  </body>
+</html>

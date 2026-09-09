@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <title>fixture: 誤クリック防止</title>
+    <script src="/content.js"></script>
+    <style>
+      body { margin: 0; font: 15px/1.8 system-ui, -apple-system, 'Hiragino Sans', sans-serif; }
+      main { padding: 24px; max-width: 720px; }
+      pre { background: #f3f4f6; padding: 12px; border-radius: 8px; min-height: 3em; }
+      .card { padding: 20px; border: 1px solid #d1d5db; border-radius: 12px; margin: 24px 0; }
+      .card button { padding: 10px 20px; border: 0; border-radius: 8px; background: #2563eb; color: #fff; cursor: pointer; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>誤クリック防止の確認</h1>
+      <p>このページでは <strong>何も押されない</strong>のが正解です。</p>
+
+      <form class="card" id="signup" onsubmit="return false">
+        <h2>会員登録</h2>
+        <p><label><input type="checkbox" name="terms" /> 利用規約とプライバシーポリシーに同意する</label></p>
+        <p><button type="submit">送信</button></p>
+      </form>
+
+      <section class="fx-cookie-note card">
+        <h2>Cookie について</h2>
+        <p>
+          当サイトの Cookie の取り扱いについては
+          <a href="/policy">Cookie ポリシー</a>
+          をご覧ください。ここには決定ボタンがないので、バナーとして採用されません。
+        </p>
+      </section>
+
+      <pre id="log"></pre>
+    </main>
+
+    <script>
+      (function () {
+        var log = document.getElementById('log');
+        function record(text) {
+          log.textContent += '[' + new Date().toLocaleTimeString('ja-JP') + '] ' + text + '\n';
+        }
+        document.addEventListener(
+          'click',
+          function (event) {
+            var el = event.target.closest('button, a, [role="button"], input');
+            if (el) record('クリック（本来は起きないはず）: ' + (el.textContent || el.value || '').trim());
+          },
+          true,
+        );
+        record('待機中。何もクリックされなければ成功です。');
+      })();
+    </script>
+  </body>
+</html>

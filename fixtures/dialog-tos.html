@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <title>fixture: 規約更新ダイアログ</title>
+    <script src="/content.js"></script>
+    <style>
+      body { margin: 0; font: 15px/1.8 system-ui, -apple-system, 'Hiragino Sans', sans-serif; }
+      main { padding: 24px; max-width: 720px; }
+      pre { background: #f3f4f6; padding: 12px; border-radius: 8px; min-height: 3em; }
+      .backdrop { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.4); }
+      .tos-dialog {
+        position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%);
+        width: 420px; padding: 24px; background: #fff; border-radius: 12px;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.25);
+      }
+      .tos-dialog button { margin-right: 8px; padding: 10px 24px; border: 1px solid #111827; border-radius: 8px; background: #fff; cursor: pointer; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>規約更新ダイアログ</h1>
+      <p>
+        Cookie バナーではない同意ダイアログです。accept モードでも
+        <strong>「はい」を押してはいけません</strong>（reject / accept どちらでも何も起きないのが正解）。
+      </p>
+      <pre id="log"></pre>
+    </main>
+
+    <div class="backdrop"></div>
+    <div class="tos-dialog" id="tos-dialog" role="dialog" aria-modal="true">
+      <p>利用規約と個人情報の取り扱いを更新しました。新しい規約に同意しますか？</p>
+      <button type="button" id="tos-yes">はい</button>
+      <button type="button" id="tos-no">いいえ</button>
+    </div>
+
+    <script>
+      (function () {
+        var log = document.getElementById('log');
+        function record(text) {
+          log.textContent += '[' + new Date().toLocaleTimeString('ja-JP') + '] ' + text + '\n';
+        }
+        document.addEventListener(
+          'click',
+          function (event) {
+            var el = event.target.closest('button, a, [role="button"], input');
+            if (el) record('クリック（本来は起きないはず）: ' + (el.textContent || el.value || '').trim());
+          },
+          true,
+        );
+        record('待機中。ダイアログがそのまま残れば成功です。');
+      })();
+    </script>
+  </body>
+</html>
