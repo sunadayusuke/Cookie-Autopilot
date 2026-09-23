@@ -88,9 +88,14 @@ export const AGE_GATE_ATTRIBUTE =
  * `unhandled` として報告してしまう（popup で未処理サイトに見える）。
  * 単独では使わず、**決定ボタンが閉じる語・折りたたみ語しか無いこと**と併せて判定する
  * （「…に同意しましたか？［同意する］［同意しない］」のような同意要求に当てないため）。
+ * `you.?ve rejected` は `you have rejected` の短縮形で、GOV.UK Frontend の Cookie バナーが
+ * 選択後に出す「You've rejected additional cookies.［Hide cookie message］」向け
+ * （判定対象は正規化前の可視テキストなので、`.?` で `'` と `’` のどちらにも当てる）。
+ * 許可側の `you.?ve accepted` は足さない。「By using this site you've accepted our cookies.
+ * ［OK］」型の通知まで完了状態と見なし、閉じる語で閉じられなくなるため。
  */
 export const SETTLED_NOTICE =
-  /you.?ve\s*chosen\s*to\s*reject|you\s*have\s*rejected|already\s*(?:rejected|accepted)|consent\s*(?:choice\s*)?saved|設定を保存しました|拒否しました|同意しました|受け付けました/i;
+  /you.?ve\s*chosen\s*to\s*reject|you\s*have\s*rejected|you.?ve\s*rejected|already\s*(?:rejected|accepted)|consent\s*(?:choice\s*)?saved|設定を保存しました|拒否しました|同意しました|受け付けました/i;
 
 /**
  * 禁止語（HARD）。どの経路でも絶対に押さない。
@@ -167,9 +172,21 @@ export const NEGATION = /donot|dont|without|never/i;
  * `without accepting` は "Browse without accepting"（`continue without` の変種）向け。
  * `reject non-essential` `decline all` `deny all` `refuse all` `opt out of all` は
  * すでに裸の `reject` `decline` `deny` `refuse` `opt out` に当たるので足していない。
+ * `block` は目的語が Cookie・トラッキングのもの（"Block cookies" "Block all cookies"
+ * "Block tracking" "Block non-essential cookies"）と、文言全体が "Block all" のものだけを拾う。
+ * 裸の `block` や "Block all …" の前方一致は入れない（"Block all notifications"
+ * "Block all messages from this user" のような通知・チャットのボタンに当たるため）。
+ * 直前が `un` `dont` `donot` `ad` のものは除く（`(?<!…)`）:
+ * - `un`: Cookie 設定のせいで表示を止めている埋め込みのプレースホルダ
+ *   「This video is blocked because of your cookie settings.［Unblock video］［Unblock all］」
+ *   のボタン。押すと同意になる
+ * - `dont` `donot`: "Don't block cookies" は押すと許可になる（isAmbiguousReject は
+ *   許可の specific 一致しか見ないので、ここで除かないと防げない）
+ * - `ad`: 広告ブロッカーの案内の "Adblock all"
+ * "Blocked content" "Block ads" は目的語が合わないので当たらない。
  */
 export const REJECT_STRONG =
-  /拒否|拒絶|お断り|同意しない|許可しない|承諾しない|承認しない|受け入れない|利用しない|使用しない|オフにする|無効にする|同意せずに(?:続ける|進む)|(?:すべて|全て)解除|選択を解除|オプトアウト|辞退|reject|decline|deny|refuse|disagree|opt\s*out|do\s*not\s*accept|dont\s*accept|do\s*not\s*agree|dont\s*agree|do\s*not\s*allow|dont\s*allow|do\s*not\s*consent|dont\s*consent|withdraw\s*consent|object\s*to|disable(?!d)|turn\s*off|turn\s*all\s*off|continue\s*without|without\s*accepting/i;
+  /拒否|拒絶|お断り|同意しない|許可しない|承諾しない|承認しない|受け入れない|利用しない|使用しない|オフにする|無効にする|同意せずに(?:続ける|進む)|(?:すべて|全て)解除|選択を解除|オプトアウト|辞退|reject|decline|deny|refuse|disagree|opt\s*out|do\s*not\s*accept|dont\s*accept|do\s*not\s*agree|dont\s*agree|do\s*not\s*allow|dont\s*allow|do\s*not\s*consent|dont\s*consent|withdraw\s*consent|object\s*to|disable(?!d)|turn\s*off|turn\s*all\s*off|continue\s*without|without\s*accepting|(?<!un|dont|donot|ad)block\s*(?:all\s*)?(?:cookies|tracking|non)|(?<!un|dont|donot|ad)blockall$/i;
 
 /**
  * 拒否語（必要最小系）。語順は問わない
@@ -179,9 +196,37 @@ export const REJECT_STRONG =
  * 直後に `all` が来る "Accept all necessary and optional" には当たらない。
  * `必要な項目のみ` `必須のみ` `only the strictly necessary` `necessary cookies only` は
  * すでに `必要な.*のみ` `必須.*のみ` `only.*necessary` `necessary.*only` に当たるので足していない。
+ * `continue with` `proceed with` は "Continue with necessary cookies" 型の必要最小ボタン向けで、
+ * **目的語（`cookies` / `only`）を必須にしてある**。必要最小系は Cookie 固有語ゲートの外でも
+ * 有効で、SOFT 禁止語・非決定語よりも優先されるため、目的語を縛らないと
+ * "Continue with Essential plan" "Continue with required fields" のようなプラン選択・
+ * フォームの「続行」まで押してしまう。
+ * `minimal` も同じ理由で `minimal cookies` / `minimal only` の形（と上の目的語必須の
+ * continue / proceed の形）だけに限り、`accept|allow|use|enable` の名詞には入れない
+ * （"Use minimal mode" "Enable minimal UI" "Allow minimal" よけ）。"Accept minimal cookies" は
+ * `minimal cookies` 側で拾う（従来は許可語として押されていた。isAcceptStrong は必要最小系を
+ * 許可語にしない）。
+ * 別カテゴリも含む文言（"Accept strictly necessary and marketing" "Accept minimal cookies and
+ * all analytics"）は押すと全許可に近くなるので、`strictly necessary` `minimum …` `minimal …`
+ * `(accept|allow|use|enable) …` `(continue|proceed) with …` の各形には同じ否定先読み
+ * （NOT_OTHER_CATEGORY）を付けてある。
  */
-export const REJECT_MINIMAL =
-  /必要なもののみ|必要な.*のみ|必要最小限|必須.*のみ|必要不可欠.*のみ|最低限.*(?:のみ|だけ)|基本的な.*のみ|necessary.*only|only.*necessary|essential.*only|only.*essential|required.*only|only.*required|strictly\s*necessary|minimum\s*(?:only|cookies)|(?:accept|allow|use|enable)\s*(?:the\s*)?(?:strictly\s*)?(?:necessary|essential|required)(?!.*(?:optional|analytic|marketing|advertis|performance|targeting|statistic|preference|all|everything|non))|functional.*only|only.*functional|technical.*only|mandatory.*only|only.*mandatory/i;
+const NOT_OTHER_CATEGORY =
+  '(?!.*(?:optional|analytic|marketing|advertis|performance|targeting|statistic|preference|all|everything|non))';
+
+export const REJECT_MINIMAL = new RegExp(
+  [
+    '必要なもののみ|必要な.*のみ|必要最小限|必須.*のみ|必要不可欠.*のみ|最低限.*(?:のみ|だけ)|基本的な.*のみ',
+    'necessary.*only|only.*necessary|essential.*only|only.*essential|required.*only|only.*required',
+    `strictly\\s*necessary${NOT_OTHER_CATEGORY}`,
+    `minimum\\s*(?:only|cookies)${NOT_OTHER_CATEGORY}`,
+    `minimal\\s*(?:only|cookies)${NOT_OTHER_CATEGORY}`,
+    `(?:accept|allow|use|enable)\\s*(?:the\\s*)?(?:strictly\\s*)?(?:necessary|essential|required)${NOT_OTHER_CATEGORY}`,
+    `(?:continue|proceed)\\s*with\\s*(?:the\\s*)?(?:strictly\\s*)?(?:necessary|essential|required|minimal)\\s*(?:cookies?|only)${NOT_OTHER_CATEGORY}`,
+    'functional.*only|only.*functional|technical.*only|mandatory.*only|only.*mandatory',
+  ].join('|'),
+  'i',
+);
 
 /**
  * 拒否語（弱一致。完全一致のみ）。容器に Cookie 固有語があるときだけ有効。
@@ -240,6 +285,13 @@ export const ACCEPT_STRONG = new RegExp(
  * 裸の `yes` は入れない。酒類・製薬サイトの年齢確認ゲート「Are you over 18? [Yes] [No]」で
  * "Yes" を押すのは法的な自己申告の代行になるため。
  * "Agree and continue" は isAcceptStrong が先に当たる（採点でここまで来ない）ので入れない。
+ * "Sounds good" "That's OK" "I'm OK with that" "Yes, I'm happy" "I'm happy with that" は
+ * 同意を意味する相づちなので、ここにだけ入れて CLOSE_EXACT には入れない（閉じる語として
+ * 押す対象にはせず、許可ボタンとして認識させるだけ。拒否ボタンが無いときに非表示へ
+ * 落とすかどうかの判定材料になる）。"Yes, I'm happy" は theguardian.com の許可ボタンの
+ * 実文言。完全一致なので、年齢確認ゲートよけで入れていない裸の `yes` とは別物である。
+ * "Thanks" "Noted" "Continue browsing" などの「読んだことを伝えるだけ」の語は、
+ * `ok` `got it` `continue` と同じく CLOSE_EXACT にも入れてある。
  */
 export const ACCEPT_WEAK_EXACT: readonly string[] = [
   '同意',
@@ -255,6 +307,23 @@ export const ACCEPT_WEAK_EXACT: readonly string[] = [
   'fine',
   'alright',
   'thats fine',
+  // 同意寄りの相づち（CLOSE_EXACT には入れない）
+  'sounds good',
+  "that's ok",
+  "that's okay",
+  "i'm ok with that",
+  "i'm okay with that",
+  "yes, i'm happy",
+  "i'm happy with that",
+  // 読んだことを伝えるだけの相づち（CLOSE_EXACT にも入れる）
+  'ok, thanks',
+  'okay, thanks',
+  'thanks',
+  'thank you',
+  'noted',
+  'ok, i understand',
+  'i got it',
+  'continue browsing',
 ].map((w) => normalize(w));
 
 /**
@@ -264,6 +333,14 @@ export const ACCEPT_WEAK_EXACT: readonly string[] = [
  * 持たない日本語の通知型 Cookie ダイアログ（dailymotion.com 型）の唯一のボタン。
  * `わかりました` `understood` と同じ「読んだことを伝えるだけ」の語で、完全一致かつ
  * Cookie 固有語ゲートの内側でしか使わない。
+ * "Thanks" "Noted" "Continue browsing" などの英語の相づちも同じ扱いで、ACCEPT_WEAK_EXACT と
+ * 両方に入れてある。"Close banner" "Hide cookie message" のような閉じる操作そのものの語は
+ * 同意を意味しないのでこちらにだけ入れる。`hide cookie message` は GOV.UK Frontend の
+ * Cookie バナーが選択後に出す確認メッセージの閉じるボタンの実文言。ただし拒否後の
+ * 「You've rejected additional cookies.［Hide cookie message］」は SETTLED_NOTICE に当たって
+ * 容器にならないので押されず、実際に押されるのは許可後の「You've accepted additional
+ * cookies.［Hide cookie message］」だけである。
+ * 同意寄りの相づち（"Yes, I'm happy" 等）は入れない（ACCEPT_WEAK_EXACT の説明を参照）。
  */
 export const CLOSE_EXACT: readonly string[] = [
   'ok',
@@ -292,6 +369,22 @@ export const CLOSE_EXACT: readonly string[] = [
   'fine',
   'sure',
   'alright',
+  // 読んだことを伝えるだけの相づち（ACCEPT_WEAK_EXACT にも入れる）
+  'ok, thanks',
+  'okay, thanks',
+  'thanks',
+  'thank you',
+  'noted',
+  'ok, i understand',
+  'i got it',
+  'continue browsing',
+  // 閉じる操作そのものの語（ACCEPT_WEAK_EXACT には入れない）
+  'close banner',
+  'close message',
+  'close notice',
+  'close cookie banner',
+  'close cookie notice',
+  'hide cookie message',
   '×',
   '✕',
   'x',
@@ -302,12 +395,15 @@ export const CLOSE_EXACT: readonly string[] = [
  * （SETTLED_NOTICE と組で見る。isCollapseWord）。
  * CLOSE_EXACT には入れない——「折りたたむ」は同意画面を閉じる操作とは限らず、
  * 自動で押してよい語だとは言い切れないため。
+ * `hide cookie banner` は `hide banner` と同じ扱いにする（バナーを隠す語はこちら、
+ * `hide cookie message` `hide this message` のようにメッセージを隠す語は CLOSE_EXACT）。
  */
 export const COLLAPSE_EXACT: readonly string[] = [
   'collapse',
   'collapse banner',
   'collapse this banner',
   'hide banner',
+  'hide cookie banner',
   '折りたたむ',
   'バナーを折りたたむ',
 ].map((w) => normalize(w));

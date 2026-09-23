@@ -14,11 +14,16 @@ import dailymotionLikeHtml from '../fixtures/dailymotion-like.html?raw';
 import dialogTosConsentClassHtml from '../fixtures/dialog-tos-consent-class.html?raw';
 import dialogTosFixedHtml from '../fixtures/dialog-tos-fixed.html?raw';
 import dialogTosHtml from '../fixtures/dialog-tos.html?raw';
+import enBlockAllHtml from '../fixtures/en-block-all.html?raw';
+import enContinueWithNecessaryHtml from '../fixtures/en-continue-with-necessary.html?raw';
 import enContinueHtml from '../fixtures/en-continue.html?raw';
 import enDivButtonsHtml from '../fixtures/en-div-buttons.html?raw';
+import enGuardianLikeHtml from '../fixtures/en-guardian-like.html?raw';
 import enIconBannerHtml from '../fixtures/en-icon-banner.html?raw';
 import enNecessaryOnlyHtml from '../fixtures/en-necessary-only.html?raw';
 import enStaticBannerHtml from '../fixtures/en-static-banner.html?raw';
+import enThanksNoticeHtml from '../fixtures/en-thanks-notice.html?raw';
+import enUnblockPlaceholderHtml from '../fixtures/en-unblock-placeholder.html?raw';
 import gakkenLikeHtml from '../fixtures/gakken-like.html?raw';
 import legoAgeGateHtml from '../fixtures/lego-agegate.html?raw';
 import linkButtonsJaHtml from '../fixtures/link-buttons-ja.html?raw';
@@ -50,6 +55,7 @@ import trapHtml from '../fixtures/trap.html?raw';
 import trustarcIbmHtml from '../fixtures/trustarc-ibm.html?raw';
 import usercentricsShadowHtml from '../fixtures/usercentrics-shadow.html?raw';
 import { parseComRules } from '../src/engine/com/engine';
+import { findContainers } from '../src/engine/detect';
 import type { EngineEnv } from '../src/engine/env';
 import type { RunOutcome, RunState } from '../src/engine/run';
 import { FALLBACK_GRACE_MS, createRunState, runOnce } from '../src/engine/run';
@@ -69,11 +75,16 @@ const FIXTURE_HTML: Record<string, string> = {
   'dialog-tos-consent-class.html': dialogTosConsentClassHtml,
   'dialog-tos-fixed.html': dialogTosFixedHtml,
   'dialog-tos.html': dialogTosHtml,
+  'en-block-all.html': enBlockAllHtml,
+  'en-continue-with-necessary.html': enContinueWithNecessaryHtml,
   'en-continue.html': enContinueHtml,
   'en-div-buttons.html': enDivButtonsHtml,
+  'en-guardian-like.html': enGuardianLikeHtml,
   'en-icon-banner.html': enIconBannerHtml,
   'en-necessary-only.html': enNecessaryOnlyHtml,
   'en-static-banner.html': enStaticBannerHtml,
+  'en-thanks-notice.html': enThanksNoticeHtml,
+  'en-unblock-placeholder.html': enUnblockPlaceholderHtml,
   'gakken-like.html': gakkenLikeHtml,
   'lego-agegate.html': legoAgeGateHtml,
   'link-buttons-ja.html': linkButtonsJaHtml,
@@ -1117,5 +1128,179 @@ describe('fixtures（祖先の本文にだけ Cookie 語がある div soup。202
       expect(doc.querySelectorAll('[data-cookie-autopilot-cloak]'), mode).toHaveLength(0);
       expect(doc.querySelectorAll('[data-cookie-autopilot-hidden]'), mode).toHaveLength(0);
     }
+  });
+});
+
+describe('fixtures（英語の語彙の拡充）', () => {
+  it('en-continue-with-necessary: reject で Continue with necessary cookies が押される', async () => {
+    const { outcome, log, doc } = await runFixture('en-continue-with-necessary.html', 'reject');
+    expect(outcome).toMatchObject({
+      status: 'handled',
+      method: 'heuristic',
+      action: 'reject',
+      clickedText: 'continuewithnecessarycookies',
+      clickedLabel: 'Continue with necessary cookies',
+    });
+    expect(log).toContain('クリック: Continue with necessary cookies');
+    expect(log).not.toContain('クリック: Accept all');
+    expect(doc.getElementById('fx-cookie-necessary')).toBeNull();
+  });
+
+  it('en-continue-with-necessary: accept では Accept all が押される', async () => {
+    const { log } = await runFixture('en-continue-with-necessary.html', 'accept');
+    expect(log).toContain('クリック: Accept all');
+    expect(log).not.toContain('クリック: Continue with necessary cookies');
+  });
+
+  it('en-block-all: reject で Block all cookies が押される', async () => {
+    const { outcome, log, doc } = await runFixture('en-block-all.html', 'reject');
+    expect(outcome).toMatchObject({
+      status: 'handled',
+      method: 'heuristic',
+      action: 'reject',
+      clickedText: 'blockallcookies',
+      clickedLabel: 'Block all cookies',
+    });
+    expect(log).toContain('クリック: Block all cookies');
+    expect(log).not.toContain('クリック: Allow all');
+    expect(doc.getElementById('fx-cookie-block')).toBeNull();
+  });
+
+  it('en-block-all: accept では Allow all が押される', async () => {
+    const { log } = await runFixture('en-block-all.html', 'accept');
+    expect(log).toContain('クリック: Allow all');
+    expect(log).not.toContain('クリック: Block all cookies');
+  });
+
+  it('en-thanks-notice: 選択肢のない通知バナーは両モードで Thanks が押される', async () => {
+    for (const mode of ['reject', 'accept'] as const) {
+      const { outcome, log, doc } = await runFixture('en-thanks-notice.html', mode);
+      expect(outcome, mode).toMatchObject({
+        status: 'handled',
+        method: 'heuristic',
+        clickedText: 'thanks',
+        clickedLabel: 'Thanks',
+      });
+      expect(log, mode).toContain('クリック: Thanks');
+      expect(doc.getElementById('fx-cookie-thanks'), mode).toBeNull();
+    }
+  });
+
+  it('en-thanks-notice: すべて拒否（pressCloseOnNotice: false）では Thanks を押さない', async () => {
+    const { outcome, log, doc } = await runFixture('en-thanks-notice.html', 'reject', { pressCloseOnNotice: false });
+    expect(outcome).toMatchObject({ status: 'handled', method: 'hide', decision: 'hidden' });
+    expect(log).not.toContain('クリック:');
+    expect((doc.getElementById('fx-cookie-thanks') as HTMLElement).style.display).toBe('none');
+  });
+
+  /**
+   * プレースホルダ（`class="cookie-content-blocker"`）は Cookie を名乗る容器として**採用される**。
+   * そのうえで「Unblock video」「Unblock all」を拒否ボタンにしないことを見る
+   * （`Unblock all` は REJECT_STRONG の `(?<!un…)blockall$` の `un` が無いと拒否の強一致になる）。
+   */
+  it('en-unblock-placeholder: プレースホルダも容器として採用される（安全策の検証の前提）', () => {
+    const dom = new JSDOM(FIXTURE_HTML['en-unblock-placeholder.html'] as string, {
+      url: 'http://localhost:4173/fixtures/en-unblock-placeholder.html',
+    });
+    const env = makeEnv(dom.window);
+    const embed = dom.window.document.getElementById('fx-embed-placeholder');
+    const containers = findContainers(dom.window.document, env);
+    const placeholder = containers.find((container) => container.el === embed);
+    expect(placeholder).toBeDefined();
+    expect(placeholder?.cookieSpecific).toBe(true);
+  });
+
+  /**
+   * 実ブラウザでは動画のプレースホルダ（16:9 の枠）の方が下部の Cookie バーより面積が大きく、
+   * findContainers は面積の小さい容器を先に使う。jsdom はレイアウトしないので大きさを注入する。
+   */
+  const placeholderRects: Partial<EngineEnv> = {
+    getRect: (el) =>
+      el.closest('#fx-embed-placeholder') !== null ? { width: 640, height: 360 } : { width: 600, height: 120 },
+  };
+
+  it('en-unblock-placeholder: reject で Reject all を押し、Unblock video / Unblock all は押さない', async () => {
+    const { outcome, log, doc } = await runFixture('en-unblock-placeholder.html', 'reject', {}, undefined, placeholderRects);
+    expect(outcome).toMatchObject({
+      status: 'handled',
+      method: 'heuristic',
+      action: 'reject',
+      clickedText: 'rejectall',
+      clickedLabel: 'Reject all',
+    });
+    expect(log).toContain('クリック: Reject all');
+    expect(log).not.toContain('クリック: Unblock');
+    expect(log).not.toContain('本来は起きないはず');
+    expect(doc.getElementById('fx-cookie-banner')).toBeNull();
+    // プレースホルダは押しも消しもしない
+    const embed = doc.getElementById('fx-embed-placeholder') as HTMLElement;
+    expect(embed).not.toBeNull();
+    expect(embed.style.display).toBe('');
+    expect(embed.hasAttribute('data-cookie-autopilot-hidden')).toBe(false);
+  });
+
+  it('en-unblock-placeholder: accept でも Unblock video / Unblock all は押さない', async () => {
+    const { log, doc } = await runFixture('en-unblock-placeholder.html', 'accept', {}, undefined, placeholderRects);
+    expect(log).toContain('クリック: Accept all');
+    expect(log).not.toContain('クリック: Unblock');
+    expect(log).not.toContain('本来は起きないはず');
+    const embed = doc.getElementById('fx-embed-placeholder') as HTMLElement;
+    expect(embed).not.toBeNull();
+    expect(embed.style.display).toBe('');
+  });
+
+  /**
+   * 同じ大きさ（makeEnv の既定）だと、DOM 順で先に来るプレースホルダが最初の容器になる。
+   * ヒューリスティックは最初の容器しか見ないので、このパスでは本物のバナーまで届かない
+   * （エンジンの現状の挙動。語彙だけでは変えられないのでそのまま固定する）。
+   * そのときも Unblock は押さず、プレースホルダも本物のバナーも消さない。
+   * reject は許可候補が無い（canHide が偽）ので hide せず `unhandled`（`no-reject`）になる。
+   */
+  it('en-unblock-placeholder: プレースホルダが最初の容器になっても Unblock は押さず、消しもしない', async () => {
+    for (const mode of ['reject', 'accept'] as const) {
+      const { outcome, log, doc } = await runFixture('en-unblock-placeholder.html', mode);
+      if (mode === 'reject') expect(outcome, mode).toMatchObject({ status: 'unhandled', reason: 'no-reject' });
+      else expect(outcome, mode).toBeNull();
+      expect(log, mode).not.toContain('クリック:');
+      const embed = doc.getElementById('fx-embed-placeholder') as HTMLElement;
+      expect(embed, mode).not.toBeNull();
+      expect(embed.style.display, mode).toBe('');
+      expect(embed.hasAttribute('data-cookie-autopilot-hidden'), mode).toBe(false);
+      expect((doc.getElementById('fx-cookie-banner') as HTMLElement).style.display, mode).toBe('');
+    }
+  });
+
+  it('en-guardian-like: reject では Yes, I’m happy を押さず非表示にする', async () => {
+    const { outcome, log, doc, elapsed } = await runFixture('en-guardian-like.html', 'reject');
+    expect(outcome).toMatchObject({ status: 'handled', method: 'hide', decision: 'hidden' });
+    // 設定パネル層（§5-5-e）が設定導線の「Manage or reject cookies」を開こうとするが、
+    // このページはパネルを出さないので何も触らず hide に落ちる（no-reject と同じ）。
+    // 同意寄りの相づち「Yes, I’m happy」は閉じる語ではないので押さない
+    expect(log).toContain('クリック: Manage or reject cookies');
+    expect(log).not.toContain('クリック: Yes, I’m happy');
+    expect(log).not.toContain('バナーを閉じました');
+    const banner = doc.getElementById('fx-cookie-guardian') as HTMLElement;
+    expect(banner.style.display).toBe('none');
+    expect(banner.getAttribute('data-cookie-autopilot-hidden')).toBe('');
+    expect(elapsed).toBeGreaterThanOrEqual(FALLBACK_GRACE_MS);
+  });
+
+  it('en-guardian-like: fallback=leave なら Yes, I’m happy を押さず unhandled', async () => {
+    const { outcome, log, doc } = await runFixture('en-guardian-like.html', 'reject', {
+      fallbackWhenNoReject: 'leave',
+    });
+    expect(outcome).toMatchObject({ status: 'unhandled' });
+    expect(log).not.toContain('クリック: Yes, I’m happy');
+    const banner = doc.getElementById('fx-cookie-guardian') as HTMLElement;
+    expect(banner.style.display).toBe('');
+    expect(banner.hasAttribute('data-cookie-autopilot-cloak')).toBe(false);
+  });
+
+  it('en-guardian-like: accept では Yes, I’m happy が押される', async () => {
+    const { outcome, log, doc } = await runFixture('en-guardian-like.html', 'accept');
+    expect(outcome).toMatchObject({ status: 'handled', method: 'heuristic', clickedText: 'yesimhappy' });
+    expect(log).toContain('クリック: Yes, I’m happy');
+    expect(log).not.toContain('クリック: Manage or reject cookies');
+    expect(doc.getElementById('fx-cookie-guardian')).toBeNull();
   });
 });

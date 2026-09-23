@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>fixture: 埋め込みプレースホルダの Unblock</title>
+    <script src="/content.js"></script>
+    <style>
+      body { margin: 0; font: 15px/1.8 system-ui, -apple-system, 'Hiragino Sans', sans-serif; }
+      main { padding: 24px; max-width: 720px; }
+      pre { background: #f3f4f6; padding: 12px; border-radius: 8px; min-height: 3em; }
+      .fx-embed {
+        display: flex; flex-direction: column; gap: 12px; align-items: flex-start;
+        margin: 16px 0; padding: 24px; border-radius: 12px; background: #1f2937; color: #f9fafb;
+      }
+      .fx-embed p { margin: 0; }
+      .fx-embed-actions { display: flex; gap: 12px; flex-wrap: wrap; }
+      .fx-embed button { padding: 8px 16px; border: 0; border-radius: 8px; background: #f59e0b; color: #111827; cursor: pointer; }
+      .fx-cookie-bar {
+        position: fixed; left: 0; right: 0; bottom: 0; z-index: 10;
+        display: flex; gap: 16px; align-items: center; justify-content: space-between; flex-wrap: wrap;
+        padding: 16px 24px; background: #111827; color: #f9fafb;
+      }
+      .fx-cookie-bar p { margin: 0; flex: 1 1 320px; }
+      .fx-actions { display: flex; gap: 12px; flex-wrap: wrap; }
+      .fx-actions button { padding: 8px 16px; border: 0; border-radius: 8px; font-size: 14px; cursor: pointer; }
+      .fx-allow { background: #2563eb; color: #fff; }
+      .fx-reject { background: #e5e7eb; color: #111827; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>埋め込みプレースホルダの Unblock</h1>
+      <p>
+        本物のバナーの「Reject all」だけが押され、Cookie 設定のせいで止めている動画の
+        「Unblock video」「Unblock all」（押すと同意になる）は reject / accept のどちらでも押されません。
+        プレースホルダは実在の CMP（Borlabs の <code>_brlbs-content-blocker</code> など）と同じく
+        Cookie を名乗る class を持つので、容器としては採用されます。
+      </p>
+      <p><code>?mode=accept</code> を付けると accept モードになります。</p>
+      <div class="fx-embed cookie-content-blocker" id="fx-embed-placeholder">
+        <p>This video is blocked because of your cookie settings.</p>
+        <div class="fx-embed-actions">
+          <button class="fx-unblock">Unblock video</button>
+          <button class="fx-unblock-all">Unblock all</button>
+        </div>
+      </div>
+      <pre id="log"></pre>
+    </main>
+
+    <div class="fx-cookie-bar" id="fx-cookie-banner">
+      <p>We use cookies to personalise content and ads, and to analyse our traffic.</p>
+      <div class="fx-actions">
+        <button class="fx-allow">Accept all</button>
+        <button class="fx-reject">Reject all</button>
+      </div>
+    </div>
+
+    <script>
+      (function () {
+        var log = document.getElementById('log');
+        function record(text) {
+          log.textContent += '[' + new Date().toLocaleTimeString('ja-JP') + '] ' + text + '\n';
+        }
+        document.addEventListener(
+          'click',
+          function (event) {
+            var el = event.target.closest('button, a, [role="button"], input');
+            if (el) record('クリック: ' + (el.textContent || el.value || '').trim());
+          },
+          true,
+        );
+        var banner = document.getElementById('fx-cookie-banner');
+        banner.addEventListener('click', function (event) {
+          if (!event.target.closest('button')) return;
+          record('バナーを閉じました');
+          banner.remove();
+        });
+        var embed = document.getElementById('fx-embed-placeholder');
+        embed.addEventListener('click', function (event) {
+          if (!event.target.closest('button')) return;
+          record('動画のブロックを解除しました（本来は起きないはず）');
+          embed.remove();
+        });
+      })();
+    </script>
+  </body>
+</html>
