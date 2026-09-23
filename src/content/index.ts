@@ -8,6 +8,7 @@ import { createEnv } from '../engine/env';
 import { elementLabel, elementText } from '../engine/normalize';
 import type { RunDeps, RunOutcome } from '../engine/run';
 import { clickAndVerify, createRunState, runOnce, unhandledSummary } from '../engine/run';
+import { resolveLang, setLang } from '../shared/i18n/lang';
 import { isExtensionMessage, sendStatus } from '../shared/messages';
 import {
   effectiveCategories,
@@ -122,6 +123,8 @@ async function main(): Promise<void> {
  */
 async function loadDeps(): Promise<RunDeps | null> {
   const settings = await getSettings();
+  // 「断るボタンを教える」のトーストに出す言語（§14.10）。ページ側の localStorage は使わない
+  setLang(resolveLang(settings.lang));
   const env = createEnv(settings.debug);
   const overrides = await getSiteOverrides();
   const mode = effectiveMode(host, overrides);
@@ -483,7 +486,7 @@ function registerMessageListener(): void {
         return undefined;
       }
       case 'startPicker': {
-        if (!IS_SUB_FRAME) beginPicker(message.action);
+        if (!IS_SUB_FRAME) void beginPicker(message.action);
         sendResponse({ ok: true });
         return undefined;
       }
@@ -498,12 +501,16 @@ function registerMessageListener(): void {
   });
 }
 
-function beginPicker(action: 'reject' | 'accept'): void {
+async function beginPicker(action: 'reject' | 'accept'): Promise<void> {
   // picker 中は自動処理を止める。実行中のパスにも打ち切りを頼む
   // （ユーザーが自分でボタンを選んでいる最中に fallback で hide されると混乱するため）
   finished = true;
   if (deps) deps.state.cancelled = true;
   stopObserving();
+
+  // トーストの言語は毎回引き直す（options で切り替えても、開いたままのタブに効くように。§14.10）
+  const settings = await getSettings().catch(() => null);
+  setLang(resolveLang(settings?.lang ?? null));
 
   startPicker({
     doc: document,

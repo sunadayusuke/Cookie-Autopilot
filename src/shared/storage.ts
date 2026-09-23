@@ -37,6 +37,7 @@ import type {
   SiteOverrides,
   TabStatus,
 } from './types';
+import type { ImportErrorCode } from './i18n/types';
 import { CATEGORY_KEYS, EXTRA_PRESET, MODES } from './types';
 import { activeCategories, allowRecordForPreset, isPreset, presetFromCategories } from './presets';
 
@@ -44,6 +45,7 @@ export const DEFAULT_PRESET: Preset = 'minimal';
 
 export const DEFAULT_SETTINGS: Settings = {
   preset: DEFAULT_PRESET,
+  lang: null,
   allowCategories: allowRecordForPreset(DEFAULT_PRESET),
   pressCloseOnNotice: true,
   onboarded: false,
@@ -175,6 +177,9 @@ function overridesFromQuery(): Partial<Settings> {
   const patch: Partial<Settings> = {};
   const debug = params.get('debug');
   if (debug !== null && debug !== '0' && debug !== 'false') patch.debug = true;
+  // popup には言語トグルが無いので、プレビューで英語表示を確認するための `?lang=en`
+  const lang = params.get('lang');
+  if (lang === 'ja' || lang === 'en') patch.lang = lang;
   return patch;
 }
 
@@ -233,6 +238,8 @@ function mergeSettings(stored: unknown): Settings {
   const pressesNothing = wantsNone && derived === 'strict';
   return {
     preset: pressesNothing ? EXTRA_PRESET : derived,
+    // 未設定・不正値は null（= ブラウザの言語で自動判定。§14.10）
+    lang: raw.lang === 'ja' || raw.lang === 'en' ? raw.lang : null,
     allowCategories: categories,
     pressCloseOnNotice: !pressesNothing,
     onboarded: raw.onboarded === true,
@@ -609,21 +616,36 @@ function isValidRuleText(value: unknown): value is string {
   return typeof value === 'string' && value.length <= MAX_RULE_TEXT_LENGTH;
 }
 
+/**
+ * インポート検証の失敗（M12）。
+ * 表示は options が担うので、ここでは理由をコードと可変部だけで投げ、文言は持たない（§14.10）。
+ * message は開発者向けのフォールバック（辞書に無いコードのときはこれがそのまま出る）。
+ */
+export class ImportError extends Error {
+  constructor(
+    readonly code: ImportErrorCode,
+    readonly params: readonly string[] = [],
+  ) {
+    super(params.length > 0 ? `${code} (${params.join(', ')})` : code);
+    this.name = 'ImportError';
+  }
+}
+
 /** インポートされた 1 件を検証する。不正なら理由付きで例外を投げる（M12） */
 function parseImportedCustomRule(raw: unknown): CustomRule {
-  if (!raw || typeof raw !== 'object') throw new Error('customRules の要素がオブジェクトではありません');
+  if (!raw || typeof raw !== 'object') throw new ImportError('import:custom-rule-shape');
   const r = raw as Partial<CustomRule>;
   if (!isValidHost(r.host)) {
-    throw new Error(`customRules の host が不正です（文字列かつ ${MAX_HOST_LENGTH} 文字以下である必要があります）`);
+    throw new ImportError('import:custom-rule-host', [String(MAX_HOST_LENGTH)]);
   }
   if (r.action !== 'reject' && r.action !== 'accept') {
-    throw new Error(`customRules の action が不正です（host: ${r.host}）`);
+    throw new ImportError('import:custom-rule-action', [r.host]);
   }
   if (r.selector !== undefined && !isValidRuleText(r.selector)) {
-    throw new Error(`customRules の selector が長すぎます（host: ${r.host}、上限 ${MAX_RULE_TEXT_LENGTH} 文字）`);
+    throw new ImportError('import:custom-rule-selector', [r.host, String(MAX_RULE_TEXT_LENGTH)]);
   }
   if (r.text !== undefined && !isValidRuleText(r.text)) {
-    throw new Error(`customRules の text が長すぎます（host: ${r.host}、上限 ${MAX_RULE_TEXT_LENGTH} 文字）`);
+    throw new ImportError('import:custom-rule-text', [r.host, String(MAX_RULE_TEXT_LENGTH)]);
   }
   const rule: CustomRule = {
     id: typeof r.id === 'string' && r.id.length > 0 ? r.id : `${r.host}:${r.action}:${Date.now().toString(36)}`,
@@ -669,24 +691,24 @@ async function replaceAllCustomRules(rules: CustomRule[]): Promise<void> {
  * siteOverrides・customRules はインポートに含まれていれば既存の内容を全置換する。
  */
 export async function importConfig(data: unknown): Promise<{ settings: boolean; siteOverrides: number; customRules: number }> {
-  if (!data || typeof data !== 'object') throw new Error('インポートするファイルの形式が不正です');
+  if (!data || typeof data !== 'object') throw new ImportError('import:malformed');
   const bundle = data as Partial<ExportBundle>;
 
   let settingsToSave: Settings | null = null;
   if (bundle.settings !== undefined) {
-    if (!bundle.settings || typeof bundle.settings !== 'object') throw new Error('settings の形式が不正です');
+    if (!bundle.settings || typeof bundle.settings !== 'object') throw new ImportError('import:settings');
     settingsToSave = mergeSettings(bundle.settings);
   }
 
   let overridesToSave: SiteOverrides | null = null;
   if (bundle.siteOverrides !== undefined) {
     if (!bundle.siteOverrides || typeof bundle.siteOverrides !== 'object') {
-      throw new Error('siteOverrides の形式が不正です');
+      throw new ImportError('import:site-overrides');
     }
     // 旧スキーマ（host → Mode）のバックアップも読めるよう unknown として検証する
     const entries = Object.entries(bundle.siteOverrides as Record<string, unknown>);
     if (entries.length > MAX_SITE_OVERRIDES) {
-      throw new Error(`siteOverrides が上限（${MAX_SITE_OVERRIDES} 件）を超えています`);
+      throw new ImportError('import:site-overrides-limit', [String(MAX_SITE_OVERRIDES)]);
     }
     const overrides: SiteOverrides = {};
     for (const [host, value] of entries) {
@@ -694,13 +716,13 @@ export async function importConfig(data: unknown): Promise<{ settings: boolean; 
       // isValidHost(host: unknown) を既に string な値に適用すると、失敗時の分岐が
       // TypeScript 上 never に narrow されて host.slice が型エラーになるため）
       if (host.length === 0 || host.length > MAX_HOST_LENGTH) {
-        throw new Error(`siteOverrides の host が不正です: ${host.slice(0, 80)}`);
+        throw new ImportError('import:site-override-host', [host.slice(0, 80)]);
       }
       // 旧スキーマ（プリセット名 / Mode）のバックアップも読み替えて受け入れる。'accept' は捨てるので
       // 「不正」ではなく単に取り込まない
       if (value === 'accept') continue;
       const override = parseSiteOverride(value);
-      if (!override) throw new Error(`siteOverrides の設定値が不正です（host: ${host}）`);
+      if (!override) throw new ImportError('import:site-override-value', [host]);
       overrides[host] = override;
     }
     overridesToSave = overrides;
@@ -708,9 +730,9 @@ export async function importConfig(data: unknown): Promise<{ settings: boolean; 
 
   let rulesToSave: CustomRule[] | null = null;
   if (bundle.customRules !== undefined) {
-    if (!Array.isArray(bundle.customRules)) throw new Error('customRules の形式が不正です');
+    if (!Array.isArray(bundle.customRules)) throw new ImportError('import:custom-rules');
     if (bundle.customRules.length > MAX_CUSTOM_RULES) {
-      throw new Error(`customRules が上限（${MAX_CUSTOM_RULES} 件）を超えています`);
+      throw new ImportError('import:custom-rules-limit', [String(MAX_CUSTOM_RULES)]);
     }
     rulesToSave = bundle.customRules.map(parseImportedCustomRule);
   }

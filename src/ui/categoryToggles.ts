@@ -12,7 +12,7 @@
 // ボタン + hidden 属性の切り替えで実装する（トグルは別ボタンなので押しても連動しない）。
 
 import type { CategoryCopy } from '../shared/copy';
-import { CATEGORY_COPY, ESSENTIAL_COPY } from '../shared/copy';
+import { categoryCopy, essentialCopy } from '../shared/copy';
 import type { CategoryKey } from '../shared/types';
 import { CATEGORY_KEYS } from '../shared/types';
 
@@ -37,9 +37,10 @@ export function createCategoryToggles(options: CategoryTogglesOptions): Category
 
   const element = document.createElement('div');
   element.className = 'category-toggles';
-  element.append(buildFixedRow(ESSENTIAL_COPY));
+  const categories = categoryCopy();
+  element.append(buildFixedRow(essentialCopy()));
   for (const key of CATEGORY_KEYS) {
-    element.append(buildToggleRow(key, CATEGORY_COPY[key], options, toggles));
+    element.append(buildToggleRow(key, categories[key], options, toggles));
   }
 
   return {
@@ -60,8 +61,8 @@ function buildFixedRow(copy: CategoryCopy): HTMLElement {
   mark.className = 'category-fixed-mark';
   mark.textContent = '✓';
   mark.setAttribute('role', 'img');
-  mark.title = '常に許可';
-  mark.setAttribute('aria-label', `${copy.name}: 常に許可`);
+  mark.title = copy.short;
+  mark.setAttribute('aria-label', `${copy.name}: ${copy.short}`);
   row.append(mark);
   return item;
 }

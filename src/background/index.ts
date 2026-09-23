@@ -2,6 +2,8 @@
 // ステータス保存・バッジ更新・Consent-O-Matic ルールの同梱コピーと定期更新。
 
 import type { ExtensionMessage, StatusMessage } from '../shared/messages';
+import { resolveLang, setLang } from '../shared/i18n/lang';
+import { tBackground } from '../shared/i18n/runtime';
 import { isExtensionMessage } from '../shared/messages';
 import {
   clearTabStatus,
@@ -199,10 +201,15 @@ function refLabel(url: string): string {
  */
 export async function updateRulesFromNetwork(): Promise<{ ok: boolean; count: number; failed: number; error?: string }> {
   try {
+    // 失敗の理由は options の「更新に失敗しました: …」としてそのまま見えるので、設定の言語に合わせる（§14.10）。
+    // 設定が読めなくても更新自体は続けたいので、try の中に置き、読めなければブラウザの言語で代替する
+    const settings = await getSettings().catch(() => null);
+    setLang(resolveLang(settings?.lang ?? null));
+
     const listResponse = await fetch(RULES_LIST_URL);
     if (!listResponse.ok) throw new Error(`rules-list.json HTTP ${listResponse.status}`);
     const references = extractReferences(await listResponse.json());
-    if (references.length === 0) throw new Error('ルール一覧が空です');
+    if (references.length === 0) throw new Error(tBackground().emptyRuleList);
 
     const failedNames: string[] = [];
     const fetched = await mapLimit(references, FETCH_CONCURRENCY, async (url) => {
@@ -224,7 +231,7 @@ export async function updateRulesFromNetwork(): Promise<{ ok: boolean; count: nu
       }
     }
     if (Object.keys(fetchedRules).length === 0 && failedNames.length > 0) {
-      throw new Error('取得できたルールがありません');
+      throw new Error(tBackground().noRulesFetched);
     }
 
     const current = await getComRules();

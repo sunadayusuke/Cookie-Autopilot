@@ -648,6 +648,20 @@ type SiteOverrides = Record<string /* siteKey */, SiteOverride>;
 
 - 容器の `cookieSpecific` は「自身の本文の Cookie 固有語」「自身か 5 階層以内の祖先の強い属性ヒント」「祖先の本文の Cookie 固有語（`body`/`html` と `main`/`nav`/`article` を内包する祖先は除く）」のいずれかで真になる。ボタンだけが並ぶ行（「設定 / 全てに同意」）を Cookie バナーの一部として扱うため
 
+### 14.10 言語設定
+
+UI は日本語・英語の 2 言語。保存値は `Settings.lang: 'ja' | 'en' | null`（既定 `null` = ブラウザの言語で自動判定。`ja` で始まる言語だけ日本語、それ以外はすべて英語）。
+
+- 文言は `shared/i18n/`（`types.ts` の `Messages` を `ja.ts` / `en.ts` が実装）に集約し、`shared/copy.ts` は `essentialCopy()` / `categoryCopy()` / `presetCopy()` / `notes()` の関数アクセサで辞書を返す（言語が実行時に変わるため定数にしない）
+- 現在の言語だけを持つ `i18n/lang.ts` と、content script / service worker の文言だけを持つ `i18n/runtime.*.ts`（`tPicker()` / `tBackground()`）は本体の辞書から分けてある。全サイト・全フレームに注入される content バンドルに popup / options の全文言を入れないため
+- HTML の静的テキストは `data-i18n` / `data-i18n-aria-label` / `data-i18n-title` にキーを書き、`applyI18n()` が流し込む（HTML 側には日本語を残し、fixtures のプレビューでも形が崩れないようにする）。`<html lang>` は `applyDocumentLang()` が書き換える
+- 切り替え UI（JA / EN のセグメント。`ui/langToggle.ts`）は options の「その他」カードの先頭行と onboarding の見出しの行の右端に置く。popup には置かない。選ぶと `saveSettings({ lang })` → ページ全体を描き直し、他のタブ（popup を含む）へは `onStorageChanged` の `settings` 経由で反映する
+- 拡張ページは `chrome.storage.sync` を待つ間のちらつきを避けるため、`localStorage` の `cookie-autopilot:lang` をキャッシュとして同期的に読む（正はあくまで保存値）。content script はページ側の `localStorage` を汚さないので読み書きせず、`getSettings()` のあとに `setLang(resolveLang(settings.lang))` するだけ（picker のトーストは起動のたびに引き直す）
+- 日付の表示は `getLang() === 'ja' ? 'ja-JP' : 'en-US'`
+- 画面に出る例外（インポートの検証エラー）は `storage.ts` がコード（`ImportError.code`）だけを投げ、表示する側が `Messages.errors` で文言にする。辞書に無いコードや保存の失敗などは生の文言のまま出す
+- 拡張の名前・説明（manifest）は `_locales/{en,ja}/messages.json` + `default_locale: 'en'` で **ブラウザの UI 言語**に従う。拡張内の言語設定には追従しない
+- エンジンの検出フレーズ（`shared/phrases.ts` など）・開発者向けの例外やデバッグログは日本語のまま（対象外）
+
 ### 取りこぼしを減らすための追補（2026-09-07）
 
 - **強い拒否語は SOFT 禁止語より優先**する。「すべて解除」「全て解除」は `解除` が SOFT 禁止語に当たるが、断るボタンそのものなので候補に残す（`decisionCandidates`）。総量マーカーの無い「選択を解除」は非決定語のまま（チェックを外すだけで保存しない可能性があるため押さない）
