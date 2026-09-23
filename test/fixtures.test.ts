@@ -85,6 +85,10 @@ const FIXTURE_HTML: Record<string, string> = {
   'en-static-banner.html': enStaticBannerHtml,
   'en-thanks-notice.html': enThanksNoticeHtml,
   'en-unblock-placeholder.html': enUnblockPlaceholderHtml,
+  // Unblock の途中にソフトハイフン・ゼロ幅スペースを挟んだ派生（正規化の不可視文字の除去 §5-5-d）
+  'en-unblock-placeholder-invisible.html': enUnblockPlaceholderHtml
+    .replace('>Unblock all<', '>Un&shy;block all<')
+    .replace('>Unblock video<', '>Un&#8203;block video<'),
   'gakken-like.html': gakkenLikeHtml,
   'lego-agegate.html': legoAgeGateHtml,
   'link-buttons-ja.html': linkButtonsJaHtml,
@@ -1249,24 +1253,73 @@ describe('fixtures（英語の語彙の拡充）', () => {
     expect(embed.style.display).toBe('');
   });
 
+  /** プレースホルダを押しも消しもしておらず、cloak も残っていないこと */
+  const expectPlaceholderUntouched = (doc: Document, mode: string): void => {
+    const embed = doc.getElementById('fx-embed-placeholder') as HTMLElement;
+    expect(embed, mode).not.toBeNull();
+    expect(embed.style.display, mode).toBe('');
+    expect(embed.hasAttribute('data-cookie-autopilot-hidden'), mode).toBe(false);
+    expect(embed.hasAttribute('data-cookie-autopilot-cloak'), mode).toBe(false);
+  };
+
   /**
    * 同じ大きさ（makeEnv の既定）だと、DOM 順で先に来るプレースホルダが最初の容器になる。
-   * ヒューリスティックは最初の容器しか見ないので、このパスでは本物のバナーまで届かない
-   * （エンジンの現状の挙動。語彙だけでは変えられないのでそのまま固定する）。
-   * そのときも Unblock は押さず、プレースホルダも本物のバナーも消さない。
-   * reject は許可候補が無い（canHide が偽）ので hide せず `unhandled`（`no-reject`）になる。
+   * プレースホルダには reject 候補も accept 候補も無い（Unblock は拒否語にも許可語にもしない）ので、
+   * ヒューリスティックは押せる候補も hide の見込みも無い容器として飛ばし、次の本物のバナーを処理する
+   * （以前は先頭の容器しか見ず、reject は `unhandled`（`no-reject`）、accept は null で終わっていた）。
+   * どちらのモードでも Unblock は押さず、プレースホルダは消しも cloak もしない。
    */
-  it('en-unblock-placeholder: プレースホルダが最初の容器になっても Unblock は押さず、消しもしない', async () => {
+  it('en-unblock-placeholder: 同じ大きさでプレースホルダが先頭でも、押せる候補の無い容器は飛ばして本物のバナーを処理する（Unblock は押さない）', async () => {
+    const rejected = await runFixture('en-unblock-placeholder.html', 'reject');
+    expect(rejected.outcome).toMatchObject({
+      status: 'handled',
+      method: 'heuristic',
+      action: 'reject',
+      clickedText: 'rejectall',
+      clickedLabel: 'Reject all',
+    });
+    expect(rejected.log).toContain('クリック: Reject all');
+    expect(rejected.log).not.toContain('クリック: Unblock');
+    expect(rejected.log).not.toContain('本来は起きないはず');
+    expect(rejected.doc.getElementById('fx-cookie-banner')).toBeNull();
+    expectPlaceholderUntouched(rejected.doc, 'reject');
+
+    const accepted = await runFixture('en-unblock-placeholder.html', 'accept');
+    expect(accepted.log).toContain('クリック: Accept all');
+    expect(accepted.log).not.toContain('クリック: Unblock');
+    expect(accepted.log).not.toContain('本来は起きないはず');
+    expect(accepted.doc.getElementById('fx-cookie-banner')).toBeNull();
+    expectPlaceholderUntouched(accepted.doc, 'accept');
+  });
+
+  /**
+   * `Un&shy;block all` `Un&#8203;block video` のように不可視の書式文字が挟まっていても、
+   * 正規化で除去するので `(?<!un…)blockall$` の否定後読みをすり抜けない（以前は `un\u00ADblockall`
+   * が拒否の強一致になり、reject で押されていた）。fixture のログは文言をそのまま出すので
+   * `クリック: Un\u00ADblock` になる点に注意し、不可視文字を挟んだ形も含めて押していないことを見る。
+   */
+  it('en-unblock-placeholder: Unblock にソフトハイフン・ゼロ幅スペースが挟まっていても押さない', async () => {
+    const html = FIXTURE_HTML['en-unblock-placeholder-invisible.html'] as string;
+    expect(html).toContain('>Un&shy;block all<');
+    expect(html).toContain('>Un&#8203;block video<');
     for (const mode of ['reject', 'accept'] as const) {
-      const { outcome, log, doc } = await runFixture('en-unblock-placeholder.html', mode);
-      if (mode === 'reject') expect(outcome, mode).toMatchObject({ status: 'unhandled', reason: 'no-reject' });
-      else expect(outcome, mode).toBeNull();
-      expect(log, mode).not.toContain('クリック:');
-      const embed = doc.getElementById('fx-embed-placeholder') as HTMLElement;
-      expect(embed, mode).not.toBeNull();
-      expect(embed.style.display, mode).toBe('');
-      expect(embed.hasAttribute('data-cookie-autopilot-hidden'), mode).toBe(false);
-      expect((doc.getElementById('fx-cookie-banner') as HTMLElement).style.display, mode).toBe('');
+      const { outcome, log, doc } = await runFixture('en-unblock-placeholder-invisible.html', mode);
+      if (mode === 'reject') {
+        expect(outcome, mode).toMatchObject({
+          status: 'handled',
+          method: 'heuristic',
+          action: 'reject',
+          clickedText: 'rejectall',
+          clickedLabel: 'Reject all',
+        });
+        expect(log, mode).toContain('クリック: Reject all');
+      } else {
+        expect(log, mode).toContain('クリック: Accept all');
+      }
+      expect(log, mode).not.toMatch(/クリック: Un[\u00AD\u200B]?block/);
+      expect(log, mode).not.toContain('本来は起きないはず');
+      expect(doc.getElementById('fx-cookie-banner'), mode).toBeNull();
+      expectPlaceholderUntouched(doc, mode);
     }
   });
 

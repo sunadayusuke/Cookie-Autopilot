@@ -157,6 +157,18 @@ export const TOTALITY = /all|everything|すべて|全て/i;
 export const NEGATION = /donot|dont|without|never/i;
 
 /**
+ * 埋め込みの「ブロック解除」語。Cookie 設定のせいで動画・地図などを止めている
+ * プレースホルダ（Borlabs の `_brlbs-content-blocker`、Cookiebot の `cookieconsent-optout-*` 等）の
+ * ボタンで、押すとその埋め込み元への同意になる。ヒューリスティックはどちらのモードでも
+ * これを候補にしない（candidates.ts の scoreCandidates）。
+ * 拒否語の否定後読み `(?<!un…)` と正規化だけに頼ると、語彙の組み合わせですり抜ける経路が残る:
+ * Borlabs 3 の既定文言 "Accept required service and unblock content" は必要最小系の
+ * `(accept|allow|use|enable)…required` に当たり、「ブロックをすべて解除」は拒否語の
+ * `(すべて|全て)解除` に当たる。その経路をここでまとめて塞ぐ。
+ */
+export const UNBLOCK = /unblock|ブロック(?:を)?(?:すべて|全て)?解除/i;
+
+/**
  * 拒否語（強一致）。
  * `don't accept` は normalize が `'` を落とすので `dont\s*accept` で受ける。
  * `do not consent` / `dont consent` / `withdraw consent` は Google Funding Choices の
@@ -179,7 +191,10 @@ export const NEGATION = /donot|dont|without|never/i;
  * 直前が `un` `dont` `donot` `ad` のものは除く（`(?<!…)`）:
  * - `un`: Cookie 設定のせいで表示を止めている埋め込みのプレースホルダ
  *   「This video is blocked because of your cookie settings.［Unblock video］［Unblock all］」
- *   のボタン。押すと同意になる
+ *   のボタン。押すと同意になる（`Un&shy;block` のようにソフトハイフン・ゼロ幅文字を
+ *   挟んだ形も、normalize がそれらを除去してから照合するので、否定後読みの `un` で除かれる）。
+ *   ヒューリスティックでは Unblock 系の文言そのものを UNBLOCK で候補から外しているので、
+ *   ここは語彙単体（パネル層・COM の分類）での歯止め
  * - `dont` `donot`: "Don't block cookies" は押すと許可になる（isAmbiguousReject は
  *   許可の specific 一致しか見ないので、ここで除かないと防げない）
  * - `ad`: 広告ブロッカーの案内の "Adblock all"
@@ -501,6 +516,11 @@ export function overridesNonDecision(normalized: string): boolean {
   if (isRejectMinimal(normalized)) return true;
   if (!TOTALITY.test(normalized)) return false;
   return isAcceptStrongSpecific(normalized) || isRejectStrong(normalized);
+}
+
+/** 埋め込みのプレースホルダの「ブロック解除」語か（押すと同意になるので、どちらのモードでも押さない） */
+export function isUnblockWord(normalized: string): boolean {
+  return normalized !== '' && UNBLOCK.test(normalized);
 }
 
 export function isCloseWord(normalized: string): boolean {

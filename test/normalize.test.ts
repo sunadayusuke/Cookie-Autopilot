@@ -63,6 +63,26 @@ describe('normalize', () => {
     expect(normalize('Next → Accept')).toBe('nextaccept');
   });
 
+  // JS の \s に含まれないので、空白の除去とは別に落とす（`Un&shy;block all` 対策）
+  it('不可視の書式文字（Default_Ignorable_Code_Point）を除去する', () => {
+    expect(normalize('Un\u00ADblock all')).toBe('unblockall');
+    expect(normalize('Un\u200Bblock all')).toBe('unblockall');
+    expect(normalize('Un\u200Cblock all')).toBe('unblockall');
+    expect(normalize('Un\u200Dblock all')).toBe('unblockall');
+    expect(normalize('Un\u2060block all')).toBe('unblockall');
+    expect(normalize('\u00AD\u200B\u200C\u200D\u2060')).toBe('');
+    // 方向制御（LRM / RLM / LRI）・結合書記素結合子も Default_Ignorable_Code_Point なので落ちる
+    expect(normalize('Un\u200Eblock all')).toBe('unblockall');
+    expect(normalize('Un\u200Fblock all')).toBe('unblockall');
+    expect(normalize('Un\u2066block all')).toBe('unblockall');
+    expect(normalize('Un\u034Fblock all')).toBe('unblockall');
+    // 描画される文字（全角スペースは空白として、ハングルなどの文字はそのまま）は変えない
+    expect(normalize('A　B')).toBe('ab');
+    expect(normalize('한국어')).toBe('한국어');
+    // BOM（U+FEFF）も除去される
+    expect(normalize('\uFEFFReject all')).toBe('rejectall');
+  });
+
   it('空・null・undefined は空文字になる', () => {
     expect(normalize('')).toBe('');
     expect(normalize(null)).toBe('');
