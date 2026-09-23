@@ -1,6 +1,6 @@
 {
   "name": "cookie-autopilot",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
   "description": "Cookie 同意バナーを方針どおりに自動処理する Chrome 拡張",
   "type": "module",

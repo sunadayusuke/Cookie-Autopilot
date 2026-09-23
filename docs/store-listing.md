@@ -10,18 +10,20 @@
 Cookie Autopilot
 ```
 
+※ manifest は `_locales`（default_locale: en）により、拡張機能名・説明をブラウザの UI 言語に応じて出し分けます。ストア掲載の「説明」欄（詳細な説明・短い説明など、本ドキュメントの各セクション）は、これとは別に言語ごとの個別登録が必要です。
+
 ## 概要 / 短い説明（132 文字以内）
 
 日本語:
 
 ```
-Cookieの同意バナーを、決めた方針で自動処理。断るボタンを自動でクリックし、見つからない場合は非表示にします。外部へのデータ送信はありません。
+Cookieの同意バナーを、決めた方針で自動処理。断るボタンを自動でクリックし、見つからない場合は非表示にします。閲覧内容を開発者に送信しません。
 ```
 
 English:
 
 ```
-Auto-handles cookie consent banners per your chosen policy: rejects when possible, else hides them. No data leaves your device.
+Handles cookie banners per your policy: rejects when possible, otherwise hides them. No developer telemetry.
 ```
 
 ## 詳細な説明
@@ -29,43 +31,57 @@ Auto-handles cookie consent banners per your chosen policy: rejects when possibl
 ### 日本語
 
 ```
-Cookie Autopilot は、Web サイトで表示される Cookie の同意画面(同意バナー)を、あなたがあらかじめ決めた方針にしたがって自動で処理する拡張機能です。
+Cookie Autopilot は、Webサイトに表示されるCookieの同意画面を、あらかじめ選んだ方針にしたがって自動処理する拡張機能です。
 
 できること
-- 同意画面を見つけると、「拒否」「必要なものだけ許可」に相当するボタンを自動でクリックします
-- 断るボタンが見つからない場合は、画面を自動で隠します(設定で「そのまま表示」に変更することもできます)
-- Cookie の種類(必要なもの・設定の記憶・アクセス解析・おすすめ表示・追跡型の広告など)ごとに許可するかどうかを、4 段階のプリセット(しっかり守る・ほどよく守る・ゆるく守る・すべて拒否)から選べます
-- サイトごとに個別の設定に切り替えたり、特定のサイトだけ拡張を無効にすることもできます
-- 自動処理がうまくいかないサイトでは、押してほしいボタンを自分で教えることができます
+・「拒否」「必要なものだけ許可」に相当するボタンを自動でクリックします。対応する同意画面では、カテゴリ別の許可設定を反映します。
+・断るボタンが見つからない場合は、同意画面を非表示にします。設定で、そのまま表示しておくこともできます。
+・「しっかり守る」「ほどよく守る」「ゆるく守る」「すべて拒否」から方針を選べます。詳細設定ではカテゴリ別に調整できます。
+・サイト別の設定変更や、特定サイトだけの無効化ができます。
+・自動処理がうまくいかないサイトでは、押してほしいボタンを自分で教えることができます。
+・ツールバーのアイコンから、処理結果やサイト別の設定を確認できます。
+・表示言語は日本語と英語に対応し、設定から切り替えられます。既定はブラウザの言語に合わせます。
 
-しないこと
-- 「すべて許可」を勝手に押すことはありません。既定の設定でも、追跡型の広告や用途不明の Cookie は常に拒否します
-- 個人情報・閲覧履歴・ページの内容を、開発者や第三者に送信することはありません
-- すべてのサイト・すべての言語の同意画面に完全対応しているわけではありません。日本語・英語以外の言語だけで書かれたバナーや、独自実装の同意画面では処理できないことがあります
+知っておいていただきたいこと
+・画面の非表示は、同意の拒否やCookieの削除を意味しません。サイトによるCookieの保存や追跡を防ぐことを保証する機能ではありません。
+・すべてのサイトや言語に対応しているわけではありません。独自の同意画面などでは、手動操作が必要になる場合があります。
+・「すべて許可」を自動で選ぶ機能はありません。既定のプリセットでは、追跡型広告や用途不明のカテゴリを許可しません。
 
-動作の仕組み
-拡張機能を初めて使うときに、初期設定ページで許可の方針を選びます。以降は Cookie の同意画面が出るたびに、その方針にしたがって自動で処理し、ツールバーのアイコンから処理結果を確認できます。設定はいつでも変更できます。
+プライバシーと通信
+・開発者による閲覧データの収集、広告、アクセス解析はありません。
+・設定、サイト別の例外、教えたボタンのルールはChromeの同期機能により、利用者自身のGoogleアカウントで同期される場合があります。処理履歴は端末内に保存します。
+・同意画面の判定ルールを更新するため、GitHubからConsent-O-MaticのJSONデータを取得します。
+
+使い方
+インストール後の初期設定で方針を選ぶと、自動処理が始まります。設定はいつでも変更できます。既に同意が保存されたサイトでは、同意画面が表示されない場合があります。
 ```
 
 ### English
 
 ```
-Cookie Autopilot automatically handles cookie consent banners on websites, following a policy you choose in advance.
+Cookie Autopilot automatically handles the cookie consent banners you run into on the web, following a policy you choose in advance.
 
 What it does
-- When it finds a consent banner, it automatically clicks the button that corresponds to "reject" or "necessary only"
-- If no reject button can be found, it hides the banner (you can change this to "leave it visible" in settings)
-- You choose how to handle each cookie category (necessary, preferences, analytics, personalization, targeted advertising, etc.) from four preset levels (Strict / Balanced (recommended) / Relaxed / Reject all)
-- You can override the setting for individual sites, or disable the extension entirely on specific sites
-- For sites where automatic handling does not work well, you can manually teach it which button to press
+- Automatically clicks the button for "Reject" or "Allow necessary only." On banners that support it, your category-level choices are applied too.
+- Hides the banner when no reject button can be found. You can turn this off in settings and leave banners visible instead.
+- Lets you pick a policy — Strict, Balanced, Relaxed, or Reject all — with per-category fine-tuning in advanced settings.
+- Supports per-site overrides, or disabling the extension entirely on specific sites.
+- Lets you teach it which button to press on sites where automatic handling doesn't work.
+- Shows processing results and per-site settings from the toolbar icon.
+- Comes in Japanese and English, switchable from settings. Defaults to your browser's language.
 
-What it does not do
-- It never clicks "accept all" on its own. Even with the default settings, targeted advertising and unrecognized cookie categories are always rejected
-- It never sends personal information, browsing history, or page content to the developer or any third party
-- It does not fully support every website or every language. Banners written only in languages other than Japanese and English, or with highly custom implementations, may not be handled
+Good to know
+- Hiding a banner doesn't mean consent was rejected or cookies were deleted, and it doesn't guarantee the site stops storing cookies or tracking you.
+- Not every site or language is supported. Custom-built consent banners may need manual handling.
+- There's no automatic "accept all." Default presets never allow targeted ads or categories of unclear purpose.
 
-How it works
-The first time you use the extension, you choose a policy on the onboarding page. From then on, whenever a cookie consent banner appears, it is handled automatically according to that policy, and you can check the result from the toolbar icon at any time. Settings can be changed at any time.
+Privacy and network
+- No browsing-data collection, ads, or analytics from the developer.
+- Settings, per-site exceptions, and taught button rules may sync to your own Google account via Chrome Sync. Processing history stays on your device.
+- Fetches Consent-O-Matic's JSON rule data from GitHub to keep consent-detection rules up to date.
+
+How to use
+Pick a policy during onboarding right after install, and automatic handling starts immediately. You can change settings anytime. Sites where consent was already saved may not show the banner again.
 ```
 
 ## カテゴリ
@@ -77,8 +93,10 @@ The first time you use the extension, you choose a policy on the onboarding page
 ## 言語
 
 ```
-日本語(UI はすべて日本語のみ)
+日本語 / English
 ```
+
+ストアの「言語」欄には日本語と English の 2 つを登録します。拡張の UI 表示言語は詳細設定・初期設定ページの JA/EN トグルで切り替えられ、保存値が無い場合はブラウザの言語で自動判定します(日本語以外はすべて英語表示)。
 
 ## 単一用途の説明（審査で必須）
 
@@ -93,7 +111,7 @@ Cookie の同意画面を、利用者があらかじめ決めた方針どおり�
 ### storage
 
 ```
-拡張の設定(選んだプリセット)とサイトごとの例外設定を保存するために使用します。それ以外の用途では使用しません。
+選んだプリセット、サイトごとの例外、利用者が教えたボタンのルールをchrome.storage.syncに保存します。判定ルールのキャッシュ・更新状態・初期設定の表示状態・サイトごとの処理履歴はchrome.storage.local、タブごとの処理状態はchrome.storage.sessionに保存します。いずれもCookie同意画面の自動処理と結果表示のために使用します。
 ```
 
 ### activeTab
@@ -105,7 +123,7 @@ Cookie の同意画面を、利用者があらかじめ決めた方針どおり�
 ### alarms
 
 ```
-同意画面の判定に使うルール(Consent-O-Matic のルール)を定期的に更新するために使用します。
+同意画面の判定に使うルール(Consent-O-Matic のルール)を週1回更新するために使用します。
 ```
 
 ### ホストへのアクセス（`<all_urls>` の content script）
@@ -123,8 +141,53 @@ Cookie の同意画面はあらゆる Web サイトに表示される可能性�
 ## データ利用の申告（フォームのチェック項目への回答）
 
 ```
-収集する情報カテゴリ: なし(個人情報・閲覧履歴・ページの内容・認証情報などのいずれも収集しません)
+申告する情報カテゴリ: ウェブ履歴、ウェブサイトのコンテンツ
+理由: 同意画面の要素やテキストを読み取り、サイト別の処理履歴を端末内に保存するため。開発者への閲覧データ送信はありません。Googleの申告方針ではローカル処理・保存も開示対象です。
 第三者への販売: しない
 承認された用途・単一用途と無関係な用途への利用: しない
 信用力の判断(与信・融資審査等)を目的とした利用: しない
 ```
+
+## 審査担当者向け操作手順
+
+ログインや有料契約は不要です。インストール後の初期設定でプリセットを選び、Cookie同意バナーが表示されるサイトを開いてください。ツールバーから処理結果とサイト別設定を確認できます。既に同意を保存したサイトではバナーが出ない場合があります。非表示という結果は拒否成功を意味しません。詳細設定から、拒否ボタンがない場合に画面を残す設定にも変更できます。
+
+## リンク
+
+- ホームページ: https://github.com/sunadayusuke/Cookie-Autopilot
+- サポート: https://github.com/sunadayusuke/Cookie-Autopilot/issues
+- プライバシーポリシー: https://github.com/sunadayusuke/Cookie-Autopilot/blob/main/PRIVACY.md
+
+## 提出画面への反映（2026-09-10）
+
+掲載文に非表示と拒否の違い、Chrome同期、GitHubルール更新を明記。カテゴリは「プライバシー&セキュリティ」、言語は日本語。ホームページ・サポートURLを入力し保存済み。単一用途とstorage/activeTab/alarms/ホスト権限の理由を入力。リモートコードは「使用していません」、データ利用は「ウェブ履歴」「ウェブサイトのコンテンツ」を選択し、用途限定の3項目とプライバシーポリシーURLを保存済み。
+
+申告根拠: https://developer.chrome.com/docs/webstore/program-policies/user-data-faq （端末内のみの処理・保存も開示対象）。審査への送信は未完了。
+
+> この時点の記録。その後 v1.0.0 を提出し、公開済み。現状は「更新（2026-09-19）」を参照。
+
+## 更新（2026-09-16）
+
+- 「詳細な説明」の日本語・英語を全面差し替え。UI の日英切り替え(既定はブラウザの言語判定)に触れる 1 行を追加
+- 拡張の UI が日本語/英語の 2 言語対応になったことに合わせ、manifest を `_locales`（default_locale: en）化。拡張機能名・説明はブラウザの UI 言語に追従するが、ストア掲載の「説明」欄は言語ごとの個別登録が引き続き必要
+- 「言語」欄をストアへの登録言語(日本語 / English)が分かる内容に更新
+- 「概要 / 短い説明」を日本語・英語とも差し替え。日本語は末尾を「外部へのデータ送信はありません。」から「閲覧内容を開発者に送信しません。」に、英語は全文を `Handles cookie banners per your policy: rejects when possible, otherwise hides them. No developer telemetry.` に変更(端末内での処理・保存は行うため、送信しないのは開発者宛てであることを明確にした)。日本語 73 文字・英語 108 文字で、いずれも 132 文字以内であることを確認済み
+
+## 更新（2026-09-19）
+
+v1.0.0 は公開済み。UI の日英 2 言語対応を含む **v1.1.0** をこの日に提出する。
+
+- `public/manifest.json` / `package.json` の version を `1.0.0` → `1.1.0` に更新（公開中のバージョンと同じ番号は再アップロードできないため）
+- `pnpm build && pnpm package` で `release/cookie-autopilot-v1.1.0.zip` を作成。`manifest.json` が zip 直下にあること、`_locales/en/messages.json` と `_locales/ja/messages.json` が同梱されていることを確認済み
+- 権限（storage / activeTab / alarms / ホストへのアクセス）に変更はない。リモートコードの扱い・データ利用の申告も v1.0.0 から変更なし
+
+### 提出時の残作業
+
+1. ダッシュボードの「パッケージ」に `release/cookie-autopilot-v1.1.0.zip` をアップロードする
+2. 「ストアの掲載情報」で言語に English を追加し、本ファイルの英語ブロック（概要 / 短い説明・詳細な説明）を貼る。掲載文は言語ごとの個別入力で、ZIP の `_locales` では代替できない
+3. スクリーンショットは `store-assets/` の日本語 UI のものを流用している。英語の掲載に英語 UI のスクリーンショットを出す場合は撮り直しが必要
+4. 審査に送信する
+
+### 既知の懸念
+
+プライバシーポリシー（`PRIVACY.md`）が日本語のみのため、英語の掲載文から日本語のポリシーを参照する形になる。審査で指摘される可能性がある。
