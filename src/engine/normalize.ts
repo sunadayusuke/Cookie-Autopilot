@@ -1,5 +1,5 @@
 // 文言の正規化（docs/SPEC.md §5-5-d）
-// trim → 小文字化 → 全角英数記号を半角へ → 空白と句読点を除去
+// trim → 小文字化 → 全角英数記号を半角へ → 空白・不可視の書式文字・句読点を除去
 // 依存なしのリーフモジュール（shared/phrases.ts からも使う）
 
 /**
@@ -11,6 +11,23 @@
  */
 const PUNCTUATION = /[。！!.,、'’‘"“”?？…:：;；‐–—()（）[\]【】&＆+＋・»›«‹→-]/g;
 
+/**
+ * 除去する不可視の書式文字。Unicode が「描画しない」と定めた文字の集合
+ * （Default_Ignorable_Code_Point。ソフトハイフン U+00AD `&shy;`・ゼロ幅スペース U+200B・
+ * ゼロ幅（非）接合子 U+200C / U+200D・単語結合子 U+2060・方向制御 U+200E / U+200F /
+ * U+202A–U+202E / U+2066–U+2069・異体字セレクタ U+FE0F・BOM U+FEFF など）をまとめて落とす。
+ * BOM 以外は JS の `\s` に含まれないので空白の除去では消えず、`Un&shy;block all` が
+ * `un\u00adblockall` のまま REJECT_STRONG の `(?<!un…)blockall` の否定後読みをすり抜けて
+ * 拒否語として押されてしまう（Unblock は押すと同意になる）。LRM / RLM（U+200E / U+200F）は
+ * RTL 対応の CMS が翻訳文言の前後に自動で挟むことがあり、攻撃でなくてもふつうに混ざる。
+ * 1 文字ずつ列挙すると漏れた文字でまたすり抜けるので、プロパティでまとめて指定する。
+ * 見た目の文言と照合結果を一致させるため、空白と同じ段で落とす。
+ * normalize は語彙・禁止語・hideTarget のテキスト比較・カスタムルールのすべての照合に効くが、
+ * どれも「見た目の文字列に近づく」方向の変化なので、禁止語の `De&shy;lete` もむしろ
+ * 当たるようになる（安全側）。表示用の elementLabel はそのまま。
+ */
+const INVISIBLE = /\p{Default_Ignorable_Code_Point}/gu;
+
 /** 全角（U+FF01–U+FF5E）を半角へ。全角スペース U+3000 は \s に含まれるので除去側で処理される */
 function toHalfWidth(text: string): string {
   return text.replace(/[！-～]/g, (ch) => String.fromCharCode(ch.charCodeAt(0) - 0xfee0));
@@ -20,6 +37,7 @@ export function normalize(text: string | null | undefined): string {
   if (!text) return '';
   return toHalfWidth(text.trim().toLowerCase())
     .replace(/\s+/g, '')
+    .replace(INVISIBLE, '')
     .replace(PUNCTUATION, '');
 }
 

@@ -6,7 +6,9 @@
 // 成功/失敗を右下固定の HUD 通知で表示する（レビュー H6）。
 
 import type { CategoryKey, CustomRule, Fallback, Preset, Settings, SiteHistoryEntry, SiteOverride } from '../shared/types';
-import { CATEGORY_COPY, ESSENTIAL_COPY, NOTES } from '../shared/copy';
+import { categoryCopy, essentialCopy, notes } from '../shared/copy';
+import type { Lang } from '../shared/i18n';
+import { applyDocumentLang, applyI18n, getLang, initLangCache, resolveLang, setLang, t } from '../shared/i18n';
 import { activeCategories } from '../shared/presets';
 import {
   DEFAULT_SETTINGS,
@@ -19,6 +21,7 @@ import {
   getSiteHistory,
   getSiteOverrides,
   hasChromeStorage,
+  ImportError,
   importConfig,
   onStorageChanged,
   removeCustomRule,
@@ -32,12 +35,16 @@ import { createPresetPicker } from '../ui/presetPicker';
 import type { PresetPickerHandle } from '../ui/presetPicker';
 import { createCategoryTable } from '../ui/categoryTable';
 import type { CategoryTableHandle } from '../ui/categoryTable';
+import { createLangToggle } from '../ui/langToggle';
+import type { LangToggleHandle } from '../ui/langToggle';
 
 /** サイト別設定の Badge 文言（§14.5-3 / §14.9） */
 function siteOverrideLabel(override: SiteOverride): string {
-  return override.kind === 'off' ? '動かさない' : '個別に調整';
+  return override.kind === 'off' ? t().options.overrideOff : t().options.overrideCustom;
 }
-const ACTION_LABELS: Record<'reject' | 'accept', string> = { reject: '断る', accept: '許可' };
+function actionLabel(action: 'reject' | 'accept'): string {
+  return action === 'reject' ? t().options.actionReject : t().options.actionAccept;
+}
 /** サイト別設定・教えたボタン一覧の Badge トーン（成功/失敗ではなく分類なので info/neutral を使う） */
 function siteOverrideBadgeTone(override: SiteOverride): 'info' | 'neutral' {
   return override.kind === 'off' ? 'neutral' : 'info';
@@ -46,8 +53,9 @@ function siteOverrideBadgeTone(override: SiteOverride): 'info' | 'neutral' {
 /** custom の override が許可している項目名（「必要なもの」は常に許可なので先頭に固定。§14.9） */
 function siteOverrideAllowText(override: SiteOverride): string {
   if (override.kind !== 'custom') return '';
-  const names = [ESSENTIAL_COPY.name, ...activeCategories(override.allow).map((key) => CATEGORY_COPY[key].name)];
-  return `許可: ${names.join('・')}`;
+  const categories = categoryCopy();
+  const names = [essentialCopy().name, ...activeCategories(override.allow).map((key) => categories[key].name)];
+  return t().options.allowedNames(names);
 }
 const ACTION_BADGE_TONE: Record<'reject' | 'accept', 'info' | 'warning'> = { reject: 'info', accept: 'warning' };
 
@@ -87,6 +95,7 @@ const els = {
   customEmpty: requireEl<HTMLElement>('custom-empty'),
   exportBtn: requireEl<HTMLButtonElement>('export-btn'),
   importInput: requireEl<HTMLInputElement>('import-input'),
+  langToggleSlot: requireEl<HTMLElement>('lang-toggle-slot'),
   ioResult: requireEl<HTMLElement>('io-result'),
   hud: requireEl<HTMLElement>('hud'),
 };
@@ -94,36 +103,36 @@ const els = {
 let currentSettings: Settings = DEFAULT_SETTINGS;
 let presetPicker: PresetPickerHandle | null = null;
 let categoryTable: CategoryTableHandle | null = null;
+let langToggle: LangToggleHandle | null = null;
+/** 言語の切り替え中か（複数の非同期描画が重ならないよう、その間トグルを止める） */
+let langBusy = false;
 let unsubscribe: (() => void) | null = null;
 
 void main();
 
 async function main(): Promise<void> {
-  els.noteAlwaysRejected.textContent = NOTES.alwaysRejected;
-  els.noteGranularOnly.textContent = NOTES.granularOnly;
+  // storage を待つ間に別の言語で描画されないよう、まずキャッシュの言語で描く（§14.10）
+  initLangCache();
+  renderStaticText();
 
   const extensionAvailable = hasChromeStorage();
 
   currentSettings = await getSettings();
-  presetPicker = createPresetPicker({
-    name: 'options-preset',
-    label: 'どこまで許可しますか？',
-    selected: currentSettings.preset,
-    onSelect: (preset) => void onPresetSelect(preset),
-  });
-  els.presetSlot.append(presetPicker.element);
+  // 正は保存値。キャッシュと食い違っていたらここで描き直す（動的な部品はこのあと組み立てる）
+  const lang = resolveLang(currentSettings.lang);
+  if (lang !== getLang()) {
+    setLang(lang);
+    renderStaticText();
+  }
 
-  categoryTable = createCategoryTable({
-    toggles: {
-      allow: currentSettings.allowCategories,
-      onToggle: (key, on) => void onCategoryToggle(key, on),
-    },
-  });
-  els.categoryTableSlot.append(categoryTable.element);
+  langToggle = createLangToggle({ lang: getLang(), onSelect: (next) => void onLangSelect(next) });
+  els.langToggleSlot.append(langToggle.element);
+  buildPresetPicker();
+  buildCategoryTable();
 
   if (!extensionAvailable) {
     els.extensionNotice.hidden = false;
-    setDisabled(document, true);
+    applyPreviewDisabled();
   }
 
   renderBasicSettings(currentSettings);
@@ -158,10 +167,106 @@ async function main(): Promise<void> {
 /** 他のタブ（onboarding 含む）で settings が変わったら、プリセット・トグル・カスタム表示を描き直す */
 async function refreshSettingsFromStorage(): Promise<void> {
   currentSettings = await getSettings();
+  // 言語も settings に入っているので、他のタブでの切り替えはこの経路で反映する（§14.10）
+  const lang = resolveLang(currentSettings.lang);
+  if (lang !== getLang()) {
+    setLang(lang);
+    await renderLanguage();
+    return;
+  }
   renderBasicSettings(currentSettings);
   categoryTable?.setAllow(currentSettings.allowCategories);
   renderPresetBadge(currentSettings);
   presetPicker?.setSelected(currentSettings.preset);
+}
+
+// ---------------------------------------------------------------------------
+// 言語（§14.10）
+// ---------------------------------------------------------------------------
+
+/** HTML の data-i18n・<html lang>・スクリプトで入れる固定文を現在の言語で描き直す */
+function renderStaticText(): void {
+  applyDocumentLang();
+  applyI18n();
+  document.title = t().options.title;
+  els.noteAlwaysRejected.textContent = notes().alwaysRejected;
+  els.noteGranularOnly.textContent = notes().granularOnly;
+}
+
+function buildPresetPicker(): void {
+  presetPicker = createPresetPicker({
+    name: 'options-preset',
+    label: t().common.presetHeading,
+    selected: currentSettings.preset,
+    onSelect: (preset) => void onPresetSelect(preset),
+  });
+  els.presetSlot.replaceChildren(presetPicker.element);
+}
+
+function buildCategoryTable(): void {
+  categoryTable = createCategoryTable({
+    toggles: {
+      allow: currentSettings.allowCategories,
+      onToggle: (key, on) => void onCategoryToggle(key, on),
+    },
+  });
+  els.categoryTableSlot.replaceChildren(categoryTable.element);
+}
+
+/** 言語が変わったあとの全面描き直し（動的に組んだ部品は作り直す） */
+async function renderLanguage(): Promise<void> {
+  renderStaticText();
+  langToggle?.setLang(getLang());
+  // 旧言語のまま残ってしまう 1 行（ルール更新結果・エクスポート/インポート結果）を消す
+  clearResultLine(els.updateResult);
+  clearResultLine(els.ioResult);
+  buildPresetPicker();
+  buildCategoryTable();
+  renderBasicSettings(currentSettings);
+  renderPresetBadge(currentSettings);
+  await Promise.all([renderComRulesInfo(), renderSiteList(), renderCustomList()]);
+  // 作り直した部品は disabled が外れているので、拡張外プレビューでは当て直す
+  applyPreviewDisabled();
+}
+
+function clearResultLine(el: HTMLElement): void {
+  el.textContent = '';
+  el.classList.remove('text-danger');
+}
+
+/**
+ * 拡張として動いていない（pnpm fixtures）ときの操作の無効化。
+ * 言語だけは切り替えて見た目を確認できるよう、トグルは有効に戻す（popup の行ボタンと同じ idiom）。
+ * ただし切り替えの処理中は、描き直しが重ならないよう止めたままにする。
+ */
+function applyPreviewDisabled(): void {
+  if (hasChromeStorage()) return;
+  setDisabled(document, true);
+  langToggle?.setDisabled(langBusy);
+}
+
+/**
+ * JA / EN を選んだとき。保存してからページ全体を描き直す。
+ * 描き直しは複数の非同期描画を待つので、続けて押されて処理が重ならないよう
+ * 終わるまでトグルを無効にする。
+ */
+async function onLangSelect(lang: Lang): Promise<void> {
+  langBusy = true;
+  langToggle?.setDisabled(true);
+  const previous = getLang();
+  setLang(lang);
+  await renderLanguage();
+  try {
+    currentSettings = await saveSettings({ lang });
+    showHud(t().common.saved, false);
+  } catch (error) {
+    setLang(previous);
+    await renderLanguage();
+    showSaveError(error);
+  } finally {
+    langBusy = false;
+    langToggle?.setDisabled(false);
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -182,6 +287,18 @@ function reasonOf(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
+/**
+ * インポートの失敗理由（§14.10）。storage.ts はコードだけを投げるので、ここで辞書に引き当てる。
+ * 辞書に無いコードや、JSON の解析エラー・保存の失敗などはそのまま（生の文言で）出す。
+ */
+function importReason(error: unknown): string {
+  if (error instanceof ImportError) {
+    const format = t().errors[error.code] as ((params: readonly string[]) => string) | undefined;
+    if (format) return format(error.params);
+  }
+  return reasonOf(error);
+}
+
 function isToggleOn(toggle: HTMLElement): boolean {
   return toggle.getAttribute('aria-checked') === 'true';
 }
@@ -191,8 +308,8 @@ function setToggle(toggle: HTMLElement, on: boolean): void {
 }
 
 function formatDate(ts: number): string {
-  if (!ts) return '—';
-  return new Date(ts).toLocaleString('ja-JP', {
+  if (!ts) return t().options.noDate;
+  return new Date(ts).toLocaleString(getLang() === 'ja' ? 'ja-JP' : 'en-US', {
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
@@ -208,7 +325,7 @@ function formatHistoryDate(at: number): string {
   const options: Intl.DateTimeFormatOptions = sameYear
     ? { month: 'long', day: 'numeric' }
     : { year: 'numeric', month: 'long', day: 'numeric' };
-  return new Intl.DateTimeFormat('ja-JP', options).format(date);
+  return new Intl.DateTimeFormat(getLang() === 'ja' ? 'ja-JP' : 'en-US', options).format(date);
 }
 
 // ---------------------------------------------------------------------------
@@ -245,7 +362,7 @@ function showHud(message: string, danger: boolean): void {
 }
 
 function showSaveError(error: unknown): void {
-  showHud(`保存できませんでした: ${reasonOf(error)}`, true);
+  showHud(t().common.saveFailed(reasonOf(error)), true);
 }
 
 // ---------------------------------------------------------------------------
@@ -288,7 +405,7 @@ async function updateSettings(patch: Partial<Settings>): Promise<void> {
     currentSettings = await saveSettings(patch);
     // クランプ後の実値（監視秒数など）を入力欄に反映する
     renderBasicSettings(currentSettings);
-    showHud('保存しました', false);
+    showHud(t().common.saved, false);
   } catch (error) {
     renderBasicSettings(previous);
     showSaveError(error);
@@ -318,7 +435,7 @@ async function onClearSiteHistory(): Promise<void> {
     await clearSiteHistory();
     await renderSiteHistoryCount();
     await renderSiteList();
-    showHud('記録を消しました', false);
+    showHud(t().options.historyCleared, false);
   } catch (error) {
     showSaveError(error);
   }
@@ -340,7 +457,7 @@ async function onPresetSelect(preset: Preset): Promise<void> {
     presetPicker?.setSelected(currentSettings.preset);
     categoryTable?.setAllow(currentSettings.allowCategories);
     renderPresetBadge(currentSettings);
-    showHud('保存しました', false);
+    showHud(t().common.saved, false);
   } catch (error) {
     currentSettings = previous;
     presetPicker?.setSelected(previous.preset);
@@ -360,7 +477,7 @@ async function onCategoryToggle(key: CategoryKey, on: boolean): Promise<void> {
     categoryTable?.setAllow(currentSettings.allowCategories);
     presetPicker?.setSelected(currentSettings.preset);
     renderPresetBadge(currentSettings);
-    showHud('保存しました', false);
+    showHud(t().common.saved, false);
   } catch (error) {
     currentSettings = previous;
     categoryTable?.setAllow(previous.allowCategories);
@@ -387,14 +504,16 @@ function setComFailure(text: string, danger: boolean): void {
 async function renderComRulesInfo(): Promise<void> {
   const status = await getComRulesStatus();
   if (status) {
-    els.comStatus.textContent = `最終更新: ${formatDate(status.updatedAt)}`;
-    if (!status.ok && status.error) setComFailure(`前回の更新に失敗しました: ${status.error}`, true);
+    els.comStatus.textContent = t().options.lastUpdated(formatDate(status.updatedAt));
+    if (!status.ok && status.error) setComFailure(t().options.lastUpdateFailed(status.error), true);
     else setComFailure('', false);
     return;
   }
   setComFailure('', false);
   const payload = await getComRules();
-  els.comStatus.textContent = `最終更新: ${payload ? formatDate(payload.fetchedAt) : '—'}`;
+  els.comStatus.textContent = t().options.lastUpdated(
+    payload ? formatDate(payload.fetchedAt) : t().options.noDate,
+  );
 }
 
 function bindUpdateRulesButton(): void {
@@ -404,20 +523,20 @@ function bindUpdateRulesButton(): void {
 async function onUpdateRules(): Promise<void> {
   els.updateRulesBtn.disabled = true;
   els.updateResult.classList.remove('text-danger');
-  els.updateResult.textContent = '更新しています…';
+  els.updateResult.textContent = t().options.updating;
   const result = await sendToRuntime<UpdateRulesResult>({ type: 'updateRules' });
   els.updateRulesBtn.disabled = false;
 
   if (!result) {
     els.updateResult.classList.add('text-danger');
-    els.updateResult.textContent = '更新できませんでした（拡張が動作していません）';
+    els.updateResult.textContent = t().options.updateUnavailable;
     return;
   }
   if (result.ok) {
-    els.updateResult.textContent = '更新しました';
+    els.updateResult.textContent = t().options.updated;
   } else {
     els.updateResult.classList.add('text-danger');
-    els.updateResult.textContent = `更新に失敗しました: ${result.error ?? '不明なエラー'}`;
+    els.updateResult.textContent = t().options.updateFailed(result.error ?? t().options.unknownError);
   }
   await renderComRulesInfo();
 }
@@ -462,14 +581,14 @@ function buildSiteRow(siteHost: string, override: SiteOverride, historyEntry: Si
   if (historyEntry) {
     const detail = document.createElement('span');
     detail.className = 'entry-detail';
-    detail.textContent = `${formatHistoryDate(historyEntry.at)}に対応`;
+    detail.textContent = t().options.handledOn(formatHistoryDate(historyEntry.at));
     main.append(detail);
   }
 
   const deleteBtn = document.createElement('button');
   deleteBtn.type = 'button';
   deleteBtn.className = 'btn btn-ghost btn-sm entry-delete';
-  deleteBtn.textContent = '削除';
+  deleteBtn.textContent = t().common.delete;
   deleteBtn.addEventListener('click', () => void onDeleteSiteOverride(siteHost));
 
   li.append(main, deleteBtn);
@@ -481,7 +600,7 @@ async function onDeleteSiteOverride(siteHost: string): Promise<void> {
   try {
     await setSiteOverride(siteHost, null);
     await renderSiteList();
-    showHud('保存しました', false);
+    showHud(t().common.saved, false);
   } catch (error) {
     showSaveError(error);
   }
@@ -512,7 +631,7 @@ function buildCustomRow(rule: CustomRule): HTMLElement {
   hostEl.textContent = rule.host;
   const badge = document.createElement('span');
   badge.className = `badge badge-${ACTION_BADGE_TONE[rule.action]}`;
-  badge.textContent = ACTION_LABELS[rule.action];
+  badge.textContent = actionLabel(rule.action);
   top.append(hostEl, badge);
   main.append(top);
 
@@ -530,14 +649,14 @@ function buildCustomRow(rule: CustomRule): HTMLElement {
   if (rule.text) {
     const code = document.createElement('code');
     code.className = 'entry-code';
-    code.textContent = `文言: ${rule.text}`;
+    code.textContent = t().options.ruleText(rule.text);
     main.append(code);
   }
 
   const deleteBtn = document.createElement('button');
   deleteBtn.type = 'button';
   deleteBtn.className = 'btn btn-ghost btn-sm entry-delete';
-  deleteBtn.textContent = '削除';
+  deleteBtn.textContent = t().common.delete;
   deleteBtn.addEventListener('click', () => void onDeleteCustomRule(rule.id));
 
   li.append(main, deleteBtn);
@@ -549,7 +668,7 @@ async function onDeleteCustomRule(id: string): Promise<void> {
   try {
     await removeCustomRule(id);
     await renderCustomList();
-    showHud('保存しました', false);
+    showHud(t().common.saved, false);
   } catch (error) {
     showSaveError(error);
   }
@@ -577,10 +696,10 @@ async function onExport(): Promise<void> {
     // URL が失効することがあるため、次のタスクに回す（レビュー L5）。
     window.setTimeout(() => URL.revokeObjectURL(url), 0);
     els.ioResult.classList.remove('text-danger');
-    els.ioResult.textContent = 'エクスポートしました';
+    els.ioResult.textContent = t().options.exported;
   } catch (error) {
     els.ioResult.classList.add('text-danger');
-    els.ioResult.textContent = `エクスポートできませんでした: ${reasonOf(error)}`;
+    els.ioResult.textContent = t().options.exportFailed(reasonOf(error));
   }
 }
 
@@ -593,18 +712,23 @@ async function onImport(): Promise<void> {
     const data: unknown = JSON.parse(await file.text());
     const result = await importConfig(data);
     els.ioResult.classList.remove('text-danger');
-    els.ioResult.textContent =
-      `インポートしました（設定: ${result.settings ? '反映しました' : '変更なし'} / ` +
-      `サイトごとの設定: ${result.siteOverrides} 件 / 教えたボタン: ${result.customRules} 件）`;
+    els.ioResult.textContent = t().options.imported(result.settings, result.siteOverrides, result.customRules);
     await refreshAfterImport();
   } catch (error) {
     els.ioResult.classList.add('text-danger');
-    els.ioResult.textContent = `インポートに失敗しました: ${reasonOf(error)}`;
+    els.ioResult.textContent = t().options.importFailed(importReason(error));
   }
 }
 
 async function refreshAfterImport(): Promise<void> {
   currentSettings = await getSettings();
+  // インポートした設定に言語が入っていれば、そちらに合わせて全面的に描き直す（§14.10）
+  const lang = resolveLang(currentSettings.lang);
+  if (lang !== getLang()) {
+    setLang(lang);
+    await renderLanguage();
+    return;
+  }
   renderBasicSettings(currentSettings);
   categoryTable?.setAllow(currentSettings.allowCategories);
   renderPresetBadge(currentSettings);

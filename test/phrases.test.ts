@@ -25,6 +25,7 @@ import {
   isRejectStrong,
   isRejectWeak,
   isSettingsButton,
+  isUnblockWord,
   overridesNonDecision,
 } from '../src/shared/phrases';
 
@@ -46,6 +47,14 @@ describe('禁止語', () => {
   it('取り返しのつかない操作を弾く', () => {
     for (const text of ['注文する', '決済する', '解約', '振込', '寄付する', 'Place order', 'Remove', 'Transfer', 'Donate']) {
       expect(isForbidden(n(text)), text).toBe(true);
+    }
+  });
+
+  // normalize が不可視の書式文字を落とすので、見た目どおりの禁止語として当たる（安全側）
+  it('ソフトハイフン・ゼロ幅文字・方向制御が挟まっても禁止語を弾く', () => {
+    for (const text of ['De\u00ADlete', 'Sub\u200Bmit', 'Buy\u200D now', '削\u2060除する', 'De\u200Elete', 'Sub\u2066mit']) {
+      expect(isForbidden(n(text)), text).toBe(true);
+      expect(isForbiddenHard(n(text)), text).toBe(true);
     }
   });
 
@@ -200,10 +209,50 @@ describe('拒否語', () => {
     }
   });
 
+  // 不可視の書式文字は normalize で落ちるので、否定後読み `(?<!un…)` をすり抜けない
+  // （`Un&shy;block all` が `un\u00ADblockall` のまま拒否の強一致になっていた）
+  it('Unblock は方向制御（LRM / RLM / LRI）・結合書記素結合子が挟まっても拒否語にならない', () => {
+    for (const text of ['Un\u200Eblock all', 'Un\u200Fblock all', 'Un\u2066block all', 'Un\u034Fblock all']) {
+      expect(isRejectStrong(n(text)), text).toBe(false);
+    }
+  });
+
+  it('Unblock はソフトハイフン・ゼロ幅文字が挟まっても拒否語にならない', () => {
+    for (const text of ['Unblock all', 'Un\u00ADblock all', 'Un\u200Bblock all', 'Un\u2060block all', 'Unblock\u200Dall']) {
+      expect(isRejectStrong(n(text)), text).toBe(false);
+    }
+  });
+
+  it('不可視の書式文字が挟まっても本来の拒否語は拒否の強一致のまま', () => {
+    for (const text of ['Re\u00ADject all', 'Re\u200Bject all', 'De\u200Ccline', 'Block\u00AD all', '\u200FReject all\u200F', 'Re\u2066ject all']) {
+      expect(isRejectStrong(n(text)), text).toBe(true);
+    }
+  });
+
   it('許可系は拒否語ではない', () => {
     for (const text of ['すべて許可', '同意する', 'Accept all']) {
       expect(isRejectStrong(n(text)), text).toBe(false);
       expect(isRejectMinimal(n(text)), text).toBe(false);
+    }
+  });
+});
+
+describe('ブロック解除語（埋め込みのプレースホルダ）', () => {
+  it('Unblock 系の文言を拾う', () => {
+    for (const text of ['Unblock video', 'Unblock all', 'Always unblock', 'Accept required service and unblock content', 'ブロックを解除', 'ブロック解除', 'ブロックをすべて解除', 'ブロックを全て解除', 'Un\u00ADblock all']) {
+      expect(isUnblockWord(n(text)), text).toBe(true);
+    }
+  });
+
+  // scoreCandidates で除かないと押されてしまう経路（isUnblockWord が塞ぐ穴の前提）
+  it('語彙だけでは拒否語に当たってしまう文言がある', () => {
+    expect(isRejectMinimal(n('Accept required service and unblock content'))).toBe(true);
+    expect(isRejectStrong(n('ブロックをすべて解除'))).toBe(true);
+  });
+
+  it('ふつうの拒否・許可・ブロック語には当たらない', () => {
+    for (const text of ['Reject all', 'Block all cookies', 'Block all', 'Accept all', 'すべて解除', '選択を解除', 'ブロック', 'Blocked content', '']) {
+      expect(isUnblockWord(n(text)), text).toBe(false);
     }
   });
 });

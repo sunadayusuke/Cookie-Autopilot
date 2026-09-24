@@ -480,6 +480,43 @@ a {
   opacity: 0.6;
 }
 
+/* 言語切り替え（JA / EN。SPEC.md §14.10）: ButtonSelect のボタン版。
+   ラジオではなく aria-pressed で選択状態を持つので、同じ見た目をこちらにも当てる。 */
+
+/* ButtonSelect の外枠は白地の上に置く想定ではないので、トラックだけ行の背景色にする */
+.lang-toggle {
+  background: var(--bg-row);
+  border-color: var(--bg-row);
+}
+
+.lang-toggle .btn-select-option {
+  margin: 0;
+  border: none;
+  background: none;
+  font-family: inherit;
+}
+
+.lang-toggle .btn-select-option[aria-pressed='true'] {
+  background: var(--wb-0);
+  filter: var(--shadow-segment-active);
+  opacity: 1;
+}
+
+.lang-toggle .btn-select-option:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+/* ラジオ版と同じく、選択中かつ無効の状態は明示的に上書きする（詳細度が同点のため） */
+.lang-toggle .btn-select-option[aria-pressed='true']:disabled {
+  opacity: 0.6;
+}
+
+.lang-toggle .btn-select-option:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
 /* ---------------------------------------------------------------------------
    ToggleSwitch（DESIGN.md §2）
    トラック36×20、つまみ16×16（inset2）。OFF wb-300、ON wb-green。

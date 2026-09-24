@@ -18,6 +18,7 @@ import {
   isRejectStrong,
   isRejectWeak,
   isSettingsButton,
+  isUnblockWord,
   overridesNonDecision,
 } from '../shared/phrases';
 import { deepQueryAll } from './deepQuery';
@@ -514,6 +515,12 @@ export function scoreCandidates(
   const weakOk = context.cookieSpecific && !context.ageGate;
 
   for (const button of decisions) {
+    // 埋め込みのプレースホルダの「Unblock」は押すと同意になるので、どちらのモードでも候補にしない。
+    // 拒否語の否定後読みや必要最小系の語彙の組み合わせ（"Accept required service and unblock
+    // content" が必要最小系に、「ブロックをすべて解除」が `(すべて|全て)解除` に当たる）で
+    // すり抜ける経路をここでまとめて塞ぐ。decisionCandidates には入れない（決定ボタンの数は
+    // 容器の判定にも使うので、プレースホルダが容器として採用されること自体は変えない）
+    if (isUnblockWord(button.text)) continue;
     if (mode === 'reject') {
       // 「すべて許可」の言い回しを含むのに否定形が無いものは、拒否ボタンだと言い切れない
       if (isAmbiguousReject(button.text)) continue;
@@ -535,7 +542,11 @@ export function scoreCandidates(
   // accept モード（fixtures 専用）は従来どおり
   const closeOk = mode === 'accept' || options.pressCloseOnNotice !== false;
   const only = decisions.length === 1 ? decisions[0] : undefined;
-  if (scored.length === 0 && only && weakOk && closeOk && isCloseWord(only.text) && !hasSettingsChoice(buttons, mode, only)) {
+  // 閉じる語は完全一致なので Unblock 系には当たらないが、上のループと揃えて明示的に除く
+  if (
+    scored.length === 0 && only && weakOk && closeOk && !isUnblockWord(only.text) &&
+    isCloseWord(only.text) && !hasSettingsChoice(buttons, mode, only)
+  ) {
     scored.push({ ...only, kind: 'close', score: 1 });
   }
 

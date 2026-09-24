@@ -1,5 +1,7 @@
 // データモデル（docs/SPEC.md §3 / §14.1）
 
+import type { Lang } from './i18n/types';
+
 export type Mode = 'reject' | 'accept' | 'off';
 /**
  * reject = 必要なもののみ（拒否）, accept = すべて許可, off = 何もしない。
@@ -33,6 +35,8 @@ export type Fallback = 'leave' | 'hide';
 export interface Settings {
   /** 既定 'minimal'。詳細設定でトグルを個別に変えると 'custom' */
   preset: Preset | 'custom';
+  /** UI の言語（§14.10）。null = ブラウザの言語で自動判定（ja 以外はすべて英語） */
+  lang: Lang | null;
   /** 実効の許可カテゴリ。preset を選ぶとこの値も書き換える */
   allowCategories: Record<CategoryKey, boolean>;
   /**

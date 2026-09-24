@@ -3,13 +3,24 @@
 // chrome API が無い環境（pnpm fixtures で配信される素の HTML）でも既定値で描画し、
 // 保存だけを無効化する（他の画面と同じ idiom）。
 
-import { NOTES, PRESET_COPY } from '../shared/copy';
+import { notes, presetCopy } from '../shared/copy';
+import type { Lang } from '../shared/i18n';
+import { applyDocumentLang, applyI18n, getLang, initLangCache, resolveLang, setLang, t } from '../shared/i18n';
 import { isPreset } from '../shared/presets';
 import type { Preset } from '../shared/types';
-import { DEFAULT_PRESET, getSettings, hasChromeStorage, saveSettings, settingsForPreset } from '../shared/storage';
+import {
+  DEFAULT_PRESET,
+  getSettings,
+  hasChromeStorage,
+  onStorageChanged,
+  saveSettings,
+  settingsForPreset,
+} from '../shared/storage';
 import { createPresetPicker } from '../ui/presetPicker';
 import type { PresetPickerHandle } from '../ui/presetPicker';
 import { createCategoryTable } from '../ui/categoryTable';
+import { createLangToggle } from '../ui/langToggle';
+import type { LangToggleHandle } from '../ui/langToggle';
 
 function requireEl<T extends Element>(id: string): T {
   const el = document.getElementById(id);
@@ -19,6 +30,7 @@ function requireEl<T extends Element>(id: string): T {
 
 const els = {
   extensionNotice: requireEl<HTMLElement>('extension-notice'),
+  langToggleSlot: requireEl<HTMLElement>('lang-toggle-slot'),
   customNotice: requireEl<HTMLElement>('custom-notice'),
   presetSlot: requireEl<HTMLElement>('preset-picker-slot'),
   categoryTableSlot: requireEl<HTMLElement>('category-table-slot'),
@@ -35,33 +47,37 @@ const els = {
   openOptionsBtn: requireEl<HTMLButtonElement>('open-options-btn'),
 };
 
+let unsubscribe: (() => void) | null = null;
 let selectedPreset: Preset = DEFAULT_PRESET;
 let picker: PresetPickerHandle | null = null;
+let langToggle: LangToggleHandle | null = null;
+/** 「この設定で始める」を押したあとか（言語を切り替えても完了表示のままにするため） */
+let done = false;
 
 void main();
 
 async function main(): Promise<void> {
+  // storage を待つ間に別の言語で描画されないよう、まずキャッシュの言語で描く（§14.10）
+  initLangCache();
+  renderStaticText();
+
   const extensionAvailable = hasChromeStorage();
 
-  els.noteAlwaysRejected.textContent = NOTES.alwaysRejected;
-  els.noteGranularOnly.textContent = NOTES.granularOnly;
-  els.categoryTableSlot.append(createCategoryTable().element);
-
   const settings = await getSettings().catch(() => null);
+  // 正は保存値。キャッシュと食い違っていたらここで描き直す（動的な部品はこのあと組み立てる）
+  const lang = resolveLang(settings?.lang ?? null);
+  if (lang !== getLang()) {
+    setLang(lang);
+    renderStaticText();
+  }
   selectedPreset = settings && isPreset(settings.preset) ? settings.preset : DEFAULT_PRESET;
   // 詳細設定でカテゴリを個別に変えている人には、ここで選ぶと上書きされることを伝える（L5）
   els.customNotice.hidden = settings?.preset !== 'custom';
 
-  picker = createPresetPicker({
-    name: 'onboarding-preset',
-    label: 'どこまで許可しますか？',
-    selected: selectedPreset,
-    disabled: !extensionAvailable,
-    onSelect: (preset) => {
-      selectedPreset = preset;
-    },
-  });
-  els.presetSlot.append(picker.element);
+  langToggle = createLangToggle({ lang: getLang(), onSelect: (next) => void onLangSelect(next) });
+  els.langToggleSlot.append(langToggle.element);
+  buildPresetPicker(extensionAvailable);
+  els.categoryTableSlot.replaceChildren(createCategoryTable().element);
 
   els.startBtn.addEventListener('click', () => void onStart());
   els.closeNowBtn.addEventListener('click', () => void onCloseNow());
@@ -76,9 +92,81 @@ async function main(): Promise<void> {
   if (!extensionAvailable) {
     els.extensionNotice.hidden = false;
     setDisabled(document, true);
+    // 言語だけは切り替えて見た目を確認できるよう、トグルは有効に戻す（options と同じ idiom）
+    langToggle?.setDisabled(false);
   }
 
   window.addEventListener('pagehide', () => stopCountdown(), { once: true });
+
+  unsubscribe = onStorageChanged((area, keys) => {
+    // 他のタブ（options）で言語を切り替えたら、この画面も追従する（§14.10）
+    if (area === 'sync' && keys.includes('settings')) void refreshLangFromStorage();
+  });
+  window.addEventListener('pagehide', () => unsubscribe?.(), { once: true });
+}
+
+// ---------------------------------------------------------------------------
+// 言語（§14.10）
+// ---------------------------------------------------------------------------
+
+/** HTML の data-i18n・<html lang>・スクリプトで入れる固定文を現在の言語で描き直す */
+function renderStaticText(): void {
+  applyDocumentLang();
+  applyI18n();
+  document.title = t().onboarding.title;
+  els.noteAlwaysRejected.textContent = notes().alwaysRejected;
+  els.noteGranularOnly.textContent = notes().granularOnly;
+}
+
+function buildPresetPicker(enabled: boolean): void {
+  picker = createPresetPicker({
+    name: 'onboarding-preset',
+    label: t().common.presetHeading,
+    selected: selectedPreset,
+    disabled: !enabled || done,
+    onSelect: (preset) => {
+      selectedPreset = preset;
+    },
+  });
+  els.presetSlot.replaceChildren(picker.element);
+}
+
+/** 言語が変わったあとの全面描き直し（動的に組んだ部品は作り直す） */
+function renderLanguage(): void {
+  renderStaticText();
+  langToggle?.setLang(getLang());
+  buildPresetPicker(hasChromeStorage());
+  els.categoryTableSlot.replaceChildren(createCategoryTable().element);
+  if (done) renderDoneSummary();
+  if (countdownTimer !== null) renderCountdown();
+  // 作り直した部品は disabled が外れているので、拡張外プレビューでは当て直す（言語だけは切り替えられる）
+  if (!hasChromeStorage()) {
+    setDisabled(document, true);
+    langToggle?.setDisabled(false);
+  }
+}
+
+/** JA / EN を選んだとき。保存してからページ全体を描き直す */
+async function onLangSelect(lang: Lang): Promise<void> {
+  const previous = getLang();
+  setLang(lang);
+  renderLanguage();
+  try {
+    await saveSettings({ lang });
+    showHud(t().common.saved, false);
+  } catch (error) {
+    setLang(previous);
+    renderLanguage();
+    showHudError(error);
+  }
+}
+
+async function refreshLangFromStorage(): Promise<void> {
+  const settings = await getSettings().catch(() => null);
+  const lang = resolveLang(settings?.lang ?? null);
+  if (lang === getLang()) return;
+  setLang(lang);
+  renderLanguage();
 }
 
 function setDisabled(scope: ParentNode, disabled: boolean): void {
@@ -97,7 +185,7 @@ async function onStart(): Promise<void> {
     // プリセット（許可カテゴリと閉じる語の扱いを含む）・完了フラグを 1 回で保存する
     // （途中で失敗して「プリセットだけ保存された」状態にしないため。L5）
     await saveSettings({ ...settingsForPreset(selectedPreset), onboarded: true });
-    showHud('設定しました', false);
+    showHud(t().onboarding.doneHeading, false);
     showDone();
   } catch (error) {
     els.startBtn.disabled = false;
@@ -106,9 +194,10 @@ async function onStart(): Promise<void> {
 }
 
 function showDone(): void {
+  done = true;
   els.actions.hidden = true;
   picker?.setDisabled(true);
-  els.doneSummary.textContent = `いまの設定: ${PRESET_COPY[selectedPreset].name}`;
+  renderDoneSummary();
   els.done.hidden = false;
 
   // タブを閉じる手段が無い環境（fixtures プレビュー）ではカウントダウンと
@@ -118,6 +207,10 @@ function showDone(): void {
     els.keepOpenBtn.hidden = false;
     startCountdown();
   }
+}
+
+function renderDoneSummary(): void {
+  els.doneSummary.textContent = t().onboarding.currentSetting(presetCopy()[selectedPreset].name);
 }
 
 // ---------------------------------------------------------------------------
@@ -150,7 +243,7 @@ function startCountdown(): void {
 }
 
 function renderCountdown(): void {
-  els.doneCountdown.textContent = `${countdownRemaining} 秒後にこのタブを閉じます`;
+  els.doneCountdown.textContent = t().onboarding.countdown(countdownRemaining);
 }
 
 function stopCountdown(): void {
@@ -201,7 +294,7 @@ let hudFinalizeTimer: number | null = null;
 
 function showHudError(error: unknown): void {
   const reason = error instanceof Error ? error.message : String(error);
-  showHud(`保存できませんでした: ${reason}`, true);
+  showHud(t().common.saveFailed(reason), true);
 }
 
 function showHud(message: string, danger: boolean): void {

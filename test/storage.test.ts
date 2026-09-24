@@ -15,6 +15,7 @@ import {
   getSiteOverrides,
   getTabStatus,
   hasChromeStorage,
+  ImportError,
   importConfig,
   recordSiteHistory,
   removeCustomRule,
@@ -29,7 +30,28 @@ import {
   setSiteOverride,
 } from '../src/shared/storage';
 import { allowRecordForPreset } from '../src/shared/presets';
+import type { ImportErrorCode } from '../src/shared/i18n';
 import type { CategoryKey, CustomRule } from '../src/shared/types';
+
+/**
+ * インポート検証の失敗を受け取る（§14.10）。
+ * importConfig は文言ではなくコードと可変部だけを投げ、文言は表示する側が辞書で引く。
+ */
+async function importError(data: unknown): Promise<ImportError> {
+  try {
+    await importConfig(data);
+  } catch (error) {
+    if (error instanceof ImportError) return error;
+    throw error;
+  }
+  throw new Error('importConfig が reject しませんでした');
+}
+
+async function expectImportError(data: unknown, code: ImportErrorCode, params?: string[]): Promise<void> {
+  const error = await importError(data);
+  expect(error.code).toBe(code);
+  if (params) expect(error.params).toEqual(params);
+}
 
 /** 許可カテゴリの record（指定した key だけ true） */
 function allowOnly(...keys: CategoryKey[]): Record<CategoryKey, boolean> {
@@ -52,6 +74,7 @@ describe('chrome API が無い環境', () => {
   it('既定値どおりの設定を返す（プリセットはほどよく守る）', async () => {
     expect(DEFAULT_SETTINGS).toEqual({
       preset: 'minimal',
+      lang: null,
       allowCategories: { A: true, B: false, D: false, E: false, F: false, X: false },
       pressCloseOnNotice: true,
       onboarded: false,
@@ -83,6 +106,18 @@ describe('chrome API が無い環境', () => {
 
     setQuery('?debug=0');
     expect((await getSettings()).debug).toBe(false);
+  });
+
+  it('?lang= で言語を上書きできる（popup の英語表示を確認するため）', async () => {
+    setQuery('?lang=en');
+    expect((await getSettings()).lang).toBe('en');
+
+    setQuery('?lang=ja');
+    expect((await getSettings()).lang).toBe('ja');
+
+    // 不正値は上書きせず、自動判定（null）のままにする
+    setQuery('?lang=fr');
+    expect((await getSettings()).lang).toBeNull();
   });
 });
 
@@ -124,75 +159,75 @@ describe('effectiveCategories（§14.1 / §14.9）', () => {
 
 describe('importConfig（検証。chrome が無くても検証と件数計算は動く）', () => {
   it('トップレベルがオブジェクトでなければ reject する', async () => {
-    await expect(importConfig(null)).rejects.toThrow('インポートするファイルの形式が不正です');
-    await expect(importConfig('nope')).rejects.toThrow();
-    await expect(importConfig(42)).rejects.toThrow();
+    await expectImportError(null, 'import:malformed');
+    await expectImportError('nope', 'import:malformed');
+    await expectImportError(42, 'import:malformed');
   });
 
   it('settings がオブジェクトでなければ reject する', async () => {
-    await expect(importConfig({ settings: 'nonsense' })).rejects.toThrow('settings の形式が不正です');
+    await expectImportError({ settings: 'nonsense' }, 'import:settings');
   });
 
   it('siteOverrides の形式が不正なら reject する', async () => {
-    await expect(importConfig({ siteOverrides: 'nonsense' })).rejects.toThrow('siteOverrides の形式が不正です');
+    await expectImportError({ siteOverrides: 'nonsense' }, 'import:site-overrides');
   });
 
   it('siteOverrides の値がプリセットでも off でもなければ reject する', async () => {
-    await expect(importConfig({ siteOverrides: { 'a.com': 'nonsense' } })).rejects.toThrow(
-      /siteOverrides の設定値が不正です/,
-    );
+    await expectImportError({ siteOverrides: { 'a.com': 'nonsense' } }, 'import:site-override-value', ['a.com']);
   });
 
   it('siteOverrides の host が 253 文字を超えたら reject する', async () => {
     const longHost = `${'a'.repeat(250)}.com`; // 254 文字
-    await expect(importConfig({ siteOverrides: { [longHost]: 'reject' } })).rejects.toThrow(
-      /siteOverrides の host が不正です/,
-    );
+    await expectImportError({ siteOverrides: { [longHost]: 'reject' } }, 'import:site-override-host', [
+      longHost.slice(0, 80),
+    ]);
   });
 
   it('siteOverrides が 1000 件を超えたら reject する', async () => {
     const siteOverrides = Object.fromEntries(
       Array.from({ length: 1001 }, (_, i) => [`host${i}.example.com`, 'reject']),
     );
-    await expect(importConfig({ siteOverrides })).rejects.toThrow(/siteOverrides が上限（1000 件）を超えています/);
+    await expectImportError({ siteOverrides }, 'import:site-overrides-limit', ['1000']);
   });
 
   it('customRules が配列でなければ reject する', async () => {
-    await expect(importConfig({ customRules: 'nonsense' })).rejects.toThrow('customRules の形式が不正です');
+    await expectImportError({ customRules: 'nonsense' }, 'import:custom-rules');
   });
 
   it('customRules の要素がオブジェクトでなければ reject する', async () => {
-    await expect(importConfig({ customRules: ['nope'] })).rejects.toThrow(
-      'customRules の要素がオブジェクトではありません',
-    );
+    await expectImportError({ customRules: ['nope'] }, 'import:custom-rule-shape');
   });
 
   it('customRules の action が 2 値以外なら reject する', async () => {
-    await expect(importConfig({ customRules: [{ host: 'a.com', action: 'invalid' }] })).rejects.toThrow(
-      /customRules の action が不正です/,
-    );
+    await expectImportError({ customRules: [{ host: 'a.com', action: 'invalid' }] }, 'import:custom-rule-action', [
+      'a.com',
+    ]);
   });
 
   it('customRules の host が 253 文字を超えたら reject する', async () => {
     const longHost = `${'a'.repeat(250)}.com`;
-    await expect(importConfig({ customRules: [{ host: longHost, action: 'reject' }] })).rejects.toThrow(
-      /customRules の host が不正です/,
-    );
+    await expectImportError({ customRules: [{ host: longHost, action: 'reject' }] }, 'import:custom-rule-host', [
+      '253',
+    ]);
   });
 
   it('customRules の selector / text が 500 文字を超えたら reject する', async () => {
     const longText = 'a'.repeat(501);
-    await expect(
-      importConfig({ customRules: [{ host: 'a.com', action: 'reject', selector: longText }] }),
-    ).rejects.toThrow(/customRules の selector が長すぎます/);
-    await expect(
-      importConfig({ customRules: [{ host: 'a.com', action: 'reject', text: longText }] }),
-    ).rejects.toThrow(/customRules の text が長すぎます/);
+    await expectImportError(
+      { customRules: [{ host: 'a.com', action: 'reject', selector: longText }] },
+      'import:custom-rule-selector',
+      ['a.com', '500'],
+    );
+    await expectImportError(
+      { customRules: [{ host: 'a.com', action: 'reject', text: longText }] },
+      'import:custom-rule-text',
+      ['a.com', '500'],
+    );
   });
 
   it('customRules が 500 件を超えたら reject する', async () => {
     const customRules = Array.from({ length: 501 }, (_, i) => ({ host: `h${i}.example.com`, action: 'reject' }));
-    await expect(importConfig({ customRules })).rejects.toThrow(/customRules が上限（500 件）を超えています/);
+    await expectImportError({ customRules }, 'import:custom-rules-limit', ['500']);
   });
 
   it('妥当なデータはそのまま取り込み、件数を返す', async () => {
@@ -446,9 +481,42 @@ describe('chrome.storage あり（per-host キー・書き込み失敗の伝播�
     });
 
     it('インポートの kind が不正なら reject する', async () => {
-      await expect(importConfig({ siteOverrides: { 'a.com': { kind: 'bogus' } } })).rejects.toThrow(
-        /siteOverrides の設定値が不正です/,
-      );
+      await expectImportError({ siteOverrides: { 'a.com': { kind: 'bogus' } } }, 'import:site-override-value', [
+        'a.com',
+      ]);
+    });
+  });
+
+  describe('言語（§14.10）', () => {
+    it('保存値が無ければ null（= ブラウザの言語で自動判定）', async () => {
+      expect((await getSettings()).lang).toBeNull();
+    });
+
+    it("'ja' / 'en' はそのまま読み、それ以外は null に正規化する", async () => {
+      for (const lang of ['ja', 'en'] as const) {
+        mock.sync.data['settings'] = { lang };
+        expect((await getSettings()).lang).toBe(lang);
+      }
+      for (const lang of ['fr', '', 'JA', null, 1, {}]) {
+        mock.sync.data['settings'] = { lang };
+        expect((await getSettings()).lang, String(lang)).toBeNull();
+      }
+    });
+
+    it('プリセットを選び直しても言語は戻らない（settingsForPreset は lang に触れない）', async () => {
+      await saveSettings({ lang: 'en' });
+      await savePreset('strict');
+      expect((await getSettings()).lang).toBe('en');
+    });
+
+    it('バックアップの書き出し・読み込みで言語も往復する', async () => {
+      await saveSettings({ lang: 'en' });
+      const bundle = await exportConfig();
+      expect(bundle.settings.lang).toBe('en');
+
+      await saveSettings({ lang: 'ja' });
+      await importConfig(bundle);
+      expect((await getSettings()).lang).toBe('en');
     });
   });
 

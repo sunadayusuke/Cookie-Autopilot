@@ -1,13 +1,14 @@
 {
   "manifest_version": 3,
-  "name": "Cookie Autopilot",
-  "version": "1.0.0",
-  "description": "Cookie の同意画面に、あなたの代わりに答えます。断るボタンを自動で押し、見つからなければ同意画面を非表示にします。",
+  "name": "__MSG_extName__",
+  "version": "1.1.1",
+  "description": "__MSG_extDescription__",
+  "default_locale": "en",
   "minimum_chrome_version": "102",
   "permissions": ["storage", "activeTab", "alarms"],
   "action": {
     "default_popup": "popup.html",
-    "default_title": "Cookie Autopilot",
+    "default_title": "__MSG_extName__",
     "default_icon": {
       "16": "icons/icon16.png",
       "32": "icons/icon32.png",
