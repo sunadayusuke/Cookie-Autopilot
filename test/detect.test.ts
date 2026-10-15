@@ -597,6 +597,74 @@ describe('リンクで作られた決定ボタン（§5-5-d の緩和）', () =>
     ]);
   });
 
+  it('同じオリジンへ同じタブで遷移するリンクだけ緩和する（別オリジン・新しいタブは候補にしない）', () => {
+    const cookieContext = { cookieSpecific: true, ageGate: false };
+    const textsOf = (html: string): string[] => {
+      setBody(`<div id="bar" role="dialog" style="position:fixed"><p>当サイトでは Cookie を使用します。</p>${html}</div>`);
+      return collectButtons(document.getElementById('bar') as Element, env, cookieContext).map((b) => b.text);
+    };
+    // 同一オリジン・同じタブ（target 無し・_self）は従来どおり候補
+    expect(textsOf('<a href="/consent/reject">全て拒否</a>')).toEqual(['全て拒否']);
+    expect(textsOf('<a href="/consent/reject" target="_self">全て拒否</a>')).toEqual(['全て拒否']);
+    // 別オリジン（個人情報の取扱いに載る外部の「オプトアウト」）。押しても同意状態は変わらない
+    expect(textsOf('<a href="https://other.example/optout">オプトアウト</a>')).toEqual([]);
+    // 新しいタブ・名前付きウィンドウで開くリンクは、同一オリジンでも候補にしない
+    expect(textsOf('<a href="/consent/reject" target="_blank">全て拒否</a>')).toEqual([]);
+    expect(textsOf('<a href="/consent/reject" target="consent-win">全て拒否</a>')).toEqual([]);
+    // a の中の要素が候補のときも、親 a の href / target で判定する
+    expect(textsOf('<a href="https://other.example/optout"><span>全て拒否</span></a>')).toEqual([]);
+  });
+
+  it('target は <base target> を既定にし、_top / _parent・opaque オリジン・解決不能 href は安全側に倒す', () => {
+    const cookieContext = { cookieSpecific: true, ageGate: false };
+    const texts = (html: string, head = ''): string[] => {
+      document.head.innerHTML = head;
+      setBody(`<div id="bar" role="dialog" style="position:fixed"><p>当サイトでは Cookie を使用します。</p>${html}</div>`);
+      const out = collectButtons(document.getElementById('bar') as Element, env, cookieContext).map((b) => b.text);
+      document.head.innerHTML = '';
+      return out;
+    };
+    const base = '<base target="_blank">';
+    // target 属性が無ければ base の既定（_blank）が効く。属性があれば base より優先
+    expect(texts('<a href="/consent/reject">全て拒否</a>', base)).toEqual([]);
+    expect(texts('<a href="/consent/reject" target="_self">全て拒否</a>', base)).toEqual(['全て拒否']);
+    // トップレベル文書では _top / _parent は同じタブ
+    expect(texts('<a href="/consent/reject" target="_top">全て拒否</a>')).toEqual(['全て拒否']);
+    expect(texts('<a href="/consent/reject" target="_parent">全て拒否</a>')).toEqual(['全て拒否']);
+    // 大文字・空白入りの target も正規化して新しいタブと判定する
+    expect(texts('<a href="/consent/reject" target=" _BLANK ">全て拒否</a>')).toEqual([]);
+    // 解決できない href は候補にしない
+    expect(texts('<a href="http://[">全て拒否</a>')).toEqual([]);
+  });
+
+  it('iframe の中（win.top / win.parent が自分でない）では _top / _parent のリンクを候補にしない', () => {
+    // jsdom の iframe 文書（about:blank）は opaque オリジンになり、オリジン判定だけで落ちてしまう。
+    // _top / _parent の分岐を単独で見るため、トップレベルの window の top / parent を差し替えて iframe 内を模す
+    const fake = {} as Window;
+    const restore: Array<() => void> = [];
+    for (const key of ['top', 'parent'] as const) {
+      const desc = Object.getOwnPropertyDescriptor(window, key);
+      Object.defineProperty(window, key, { configurable: true, get: () => fake });
+      restore.push(() => (desc ? Object.defineProperty(window, key, desc) : delete (window as never)[key]));
+    }
+    try {
+      setBody(`
+        <div id="bar" role="dialog" style="position:fixed">
+          <p>当サイトでは Cookie を使用します。</p>
+          <a href="/consent/reject" target="_self">全て拒否</a>
+          <a href="/consent/reject" target="_top">全て拒否</a>
+          <a href="/consent/reject" target="_parent">全て拒否</a>
+        </div>
+      `);
+      const bar = document.getElementById('bar') as Element;
+      const texts = collectButtons(bar, env, { cookieSpecific: true, ageGate: false });
+      // _self だけが残る
+      expect(texts.map((b) => (b.el as HTMLElement).getAttribute('target'))).toEqual(['_self']);
+    } finally {
+      for (const fn of restore) fn();
+    }
+  });
+
   it('弱一致・閉じる語のリンクは緩和の対象外（Cookie の容器でも押さない）', () => {
     setBody(`
       <div id="bar" class="cookie-bar" style="position:fixed">
