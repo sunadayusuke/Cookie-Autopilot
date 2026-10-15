@@ -17,8 +17,8 @@
   <body>
     <div class="options">
       <header class="options-header">
-        <h1>Cookie Autopilot の設定</h1>
-        <p id="extension-notice" class="notice" hidden>
+        <h1 data-i18n="options.title">Cookie Autopilot の設定</h1>
+        <p id="extension-notice" class="notice" data-i18n="common.extensionNotice" hidden>
           拡張として読み込むと有効になります。ここでは見た目だけ確認できます。
         </p>
       </header>
@@ -26,11 +26,11 @@
       <!-- 1. どこまで許可しますか？（§14.5-1。onboarding と同じ構成 + 「あなたの設定」トグル列） -->
       <section class="card" aria-labelledby="preset-heading">
         <div class="card-title-row">
-          <h2 id="preset-heading" class="section-title">どこまで許可しますか？</h2>
-          <span id="preset-custom-badge" class="badge badge-info" hidden>カスタム</span>
+          <h2 id="preset-heading" class="section-title" data-i18n="common.presetHeading">どこまで許可しますか？</h2>
+          <span id="preset-custom-badge" class="badge badge-info" data-i18n="options.customBadge" hidden>カスタム</span>
         </div>
         <div id="preset-picker-slot"></div>
-        <h3 id="category-table-heading" class="card-subtitle">それぞれの Cookie は何をするの？</h3>
+        <h3 id="category-table-heading" class="card-subtitle" data-i18n="common.categoryHeading">それぞれの Cookie は何をするの？</h3>
         <div id="category-table-slot"></div>
         <div class="field-group">
           <p class="field-note" id="note-always-rejected"></p>
@@ -40,21 +40,23 @@
 
       <!-- 2. 断れなかったとき（§14.5-2） -->
       <section class="card" aria-labelledby="fallback-heading">
-        <h2 id="fallback-heading" class="section-title">断れなかったとき</h2>
-        <fieldset role="radiogroup" aria-label="断れなかったときの挙動">
+        <h2 id="fallback-heading" class="section-title" data-i18n="options.fallbackTitle">断れなかったとき</h2>
+        <fieldset role="radiogroup" aria-label="断れなかったときの挙動" data-i18n-aria-label="options.fallbackGroupLabel">
           <div class="option-list" id="fallback-list">
             <label class="radio-row hairline-row">
               <input type="radio" name="fallback" value="hide" class="radio-row-input" />
               <span class="radio-row-text">
-                <span class="radio-row-title">同意画面を非表示にする（おすすめ）</span>
-                <span class="radio-row-note">断るボタンが見つからない場合、同意画面だけ隠します。</span>
+                <span class="radio-row-title" data-i18n="options.fallbackHide">同意画面を非表示にする（おすすめ）</span>
+                <span class="radio-row-note" data-i18n="options.fallbackHideNote"
+                  >断るボタンが見つからない場合、同意画面だけ隠します。</span
+                >
               </span>
             </label>
             <label class="radio-row hairline-row">
               <input type="radio" name="fallback" value="leave" class="radio-row-input" />
               <span class="radio-row-text">
-                <span class="radio-row-title">そのまま表示しておく</span>
-                <span class="radio-row-note">何もせず同意画面を表示したままにします。</span>
+                <span class="radio-row-title" data-i18n="options.fallbackLeave">そのまま表示しておく</span>
+                <span class="radio-row-note" data-i18n="options.fallbackLeaveNote">何もせず同意画面を表示したままにします。</span>
               </span>
             </label>
           </div>
@@ -63,36 +65,40 @@
 
       <!-- 3. サイトごとの設定（§14.5-3） -->
       <section class="card" aria-labelledby="site-heading">
-        <h2 id="site-heading" class="section-title">サイトごとの設定</h2>
+        <h2 id="site-heading" class="section-title" data-i18n="options.siteTitle">サイトごとの設定</h2>
         <ul class="entry-list" id="site-list"></ul>
-        <p class="empty-hint" id="site-empty">サイトごとの設定はまだありません。</p>
+        <p class="empty-hint" id="site-empty" data-i18n="options.siteEmpty">サイトごとの設定はまだありません。</p>
       </section>
 
       <!-- 4. 教えたボタン（§14.5-4） -->
       <section class="card" aria-labelledby="custom-heading">
-        <h2 id="custom-heading" class="section-title">教えたボタン</h2>
+        <h2 id="custom-heading" class="section-title" data-i18n="options.customTitle">教えたボタン</h2>
         <ul class="entry-list" id="custom-list"></ul>
-        <p class="empty-hint" id="custom-empty">教えたボタンはまだありません。</p>
+        <p class="empty-hint" id="custom-empty" data-i18n="options.customEmpty">教えたボタンはまだありません。</p>
       </section>
 
       <!-- 5. 判定ルールの更新（§14.5-5。Consent-O-Matic の名前・件数・ライセンスはここに出さない） -->
       <section class="card" aria-labelledby="rules-heading">
-        <h2 id="rules-heading" class="section-title">判定ルールの更新</h2>
-        <p class="field-note">同意画面を見分けるルールを週に 1 回自動で更新します。</p>
-        <p id="com-status">読み込み中…</p>
+        <h2 id="rules-heading" class="section-title" data-i18n="options.rulesTitle">判定ルールの更新</h2>
+        <p class="field-note" data-i18n="options.rulesNote">同意画面を見分けるルールを週に 1 回自動で更新します。</p>
+        <p id="com-status" data-i18n="options.loading">読み込み中…</p>
         <p id="com-failure" class="field-note" hidden></p>
         <div>
-          <button type="button" class="btn btn-outline" id="update-rules">今すぐ更新</button>
+          <button type="button" class="btn btn-outline" id="update-rules" data-i18n="options.updateNow">今すぐ更新</button>
         </div>
         <p class="field-note" id="update-result" aria-live="polite"></p>
       </section>
 
       <!-- 6. その他（§14.5-6） -->
       <section class="card" aria-labelledby="misc-heading">
-        <h2 id="misc-heading" class="section-title">その他</h2>
+        <h2 id="misc-heading" class="section-title" data-i18n="options.miscTitle">その他</h2>
         <div class="option-list">
           <div class="option-row hairline-row">
-            <span class="option-row-title">タブのアイコンに処理結果のバッジを表示する</span>
+            <span class="option-row-title" data-i18n="common.langLabel">言語</span>
+            <div id="lang-toggle-slot"></div>
+          </div>
+          <div class="option-row hairline-row">
+            <span class="option-row-title" data-i18n="options.showBadge">タブのアイコンに処理結果のバッジを表示する</span>
             <button
               type="button"
               class="toggle"
@@ -100,16 +106,17 @@
               role="switch"
               aria-checked="false"
               aria-label="タブのアイコンに処理結果のバッジを表示する"
+              data-i18n-aria-label="options.showBadge"
             >
               <span class="toggle-thumb"></span>
             </button>
           </div>
           <div class="option-row hairline-row">
-            <span class="option-row-title">同意画面の出現を監視する秒数</span>
+            <span class="option-row-title" data-i18n="options.observeSeconds">同意画面の出現を監視する秒数</span>
             <input type="number" id="observe-seconds" class="input input-number" min="1" max="120" step="1" />
           </div>
           <div class="option-row hairline-row">
-            <span class="option-row-title">デバッグログをコンソールに出力する（console.debug）</span>
+            <span class="option-row-title" data-i18n="options.debug">デバッグログをコンソールに出力する（console.debug）</span>
             <button
               type="button"
               class="toggle"
@@ -117,29 +124,35 @@
               role="switch"
               aria-checked="false"
               aria-label="デバッグログをコンソールに出力する"
+              data-i18n-aria-label="options.debugAria"
             >
               <span class="toggle-thumb"></span>
             </button>
           </div>
           <div class="option-row hairline-row">
-            <span class="option-row-title">対応したサイトの記録: <span id="site-history-count">0</span> 件</span>
-            <button type="button" class="btn btn-ghost btn-sm" id="clear-site-history">記録を消す</button>
+            <span class="option-row-title"
+              ><span data-i18n="options.siteHistoryCount">対応したサイトの記録</span>:
+              <span id="site-history-count">0</span><span data-i18n="options.siteHistoryUnit"> 件</span></span
+            >
+            <button type="button" class="btn btn-ghost btn-sm" id="clear-site-history" data-i18n="options.clearHistory">記録を消す</button>
           </div>
           <div class="option-row">
-            <span class="option-row-title">はじめの設定をもう一度見る</span>
-            <button type="button" class="btn btn-outline btn-sm" id="reopen-onboarding">開く</button>
+            <span class="option-row-title" data-i18n="options.reopenOnboarding">はじめの設定をもう一度見る</span>
+            <button type="button" class="btn btn-outline btn-sm" id="reopen-onboarding" data-i18n="options.open">開く</button>
           </div>
         </div>
       </section>
 
       <!-- 7. バックアップ（§14.5-7） -->
       <section class="card" aria-labelledby="io-heading">
-        <h2 id="io-heading" class="section-title">バックアップ</h2>
-        <p class="field-note">インポートすると現在のサイトごとの設定と教えたボタンは置き換えられます。</p>
+        <h2 id="io-heading" class="section-title" data-i18n="options.backupTitle">バックアップ</h2>
+        <p class="field-note" data-i18n="options.backupNote">
+          インポートすると現在のサイトごとの設定と教えたボタンは置き換えられます。
+        </p>
         <div class="io-row">
-          <button type="button" class="btn btn-outline" id="export-btn">エクスポート</button>
+          <button type="button" class="btn btn-outline" id="export-btn" data-i18n="options.exportBtn">エクスポート</button>
           <label class="btn btn-outline btn-file" id="import-label">
-            インポート
+            <span data-i18n="options.importBtn">インポート</span>
             <input type="file" id="import-input" accept="application/json" hidden />
           </label>
         </div>

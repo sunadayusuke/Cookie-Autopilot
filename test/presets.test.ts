@@ -1,7 +1,8 @@
 // プリセットと確定コピー（docs/SPEC.md §14.1 / §14.2）
 
-import { describe, expect, it } from 'vitest';
-import { CATEGORY_COPY, ESSENTIAL_COPY, NOTES, PRESET_COPY } from '../src/shared/copy';
+import { beforeEach, describe, expect, it } from 'vitest';
+import { categoryCopy, essentialCopy, notes, presetCopy } from '../src/shared/copy';
+import { setLang } from '../src/shared/i18n';
 import {
   PRESETS,
   PRESET_ORDER,
@@ -92,12 +93,16 @@ describe('presetFromCategories', () => {
   });
 });
 
-describe('コピー（§14.2 の表）', () => {
+describe('コピー（§14.2 の表。日本語）', () => {
+  beforeEach(() => {
+    setLang('ja');
+  });
+
   it('カテゴリは 6 件（必須は別枠）で、すべて 3 つの文言を持つ', () => {
-    expect(Object.keys(CATEGORY_COPY)).toEqual([...CATEGORY_KEYS]);
-    expect(Object.keys(CATEGORY_COPY)).toHaveLength(6);
+    expect(Object.keys(categoryCopy())).toEqual([...CATEGORY_KEYS]);
+    expect(Object.keys(categoryCopy())).toHaveLength(6);
     for (const key of CATEGORY_KEYS) {
-      const copy = CATEGORY_COPY[key];
+      const copy = categoryCopy()[key];
       expect(copy.name, key).not.toBe('');
       expect(copy.short, key).not.toBe('');
       expect(copy.description.length, key).toBeGreaterThan(10);
@@ -105,42 +110,43 @@ describe('コピー（§14.2 の表）', () => {
   });
 
   it('必須 Cookie は「常に許可」と伝える', () => {
-    expect(ESSENTIAL_COPY.name).toBe('必要なもの');
-    expect(ESSENTIAL_COPY.short).toBe('常に許可');
+    expect(essentialCopy().name).toBe('必要なもの');
+    expect(essentialCopy().short).toBe('常に許可');
   });
 
   it('プリセットは 3 件 + すべて拒否で、おすすめはほどよく守るだけ', () => {
-    expect(Object.keys(PRESET_COPY)).toEqual([...PRESET_KEYS, EXTRA_PRESET]);
-    expect(PRESET_COPY.strict.name).toBe('しっかり守る');
-    expect(PRESET_COPY.minimal.name).toBe('ほどよく守る');
-    expect(PRESET_COPY.relaxed.name).toBe('ゆるく守る');
-    expect(PRESET_COPY.none.name).toBe('すべて拒否');
-    expect(PRESET_COPY.minimal.recommended).toBe(true);
-    expect(PRESET_COPY.strict.recommended).toBeUndefined();
-    expect(PRESET_COPY.relaxed.recommended).toBeUndefined();
-    expect(PRESET_COPY.none.recommended).toBeUndefined();
+    const presets = presetCopy();
+    expect(Object.keys(presets)).toEqual([...PRESET_KEYS, EXTRA_PRESET]);
+    expect(presets.strict.name).toBe('しっかり守る');
+    expect(presets.minimal.name).toBe('ほどよく守る');
+    expect(presets.relaxed.name).toBe('ゆるく守る');
+    expect(presets.none.name).toBe('すべて拒否');
+    expect(presets.minimal.recommended).toBe(true);
+    expect(presets.strict.recommended).toBeUndefined();
+    expect(presets.relaxed.recommended).toBeUndefined();
+    expect(presets.none.recommended).toBeUndefined();
     for (const preset of [...PRESET_KEYS, EXTRA_PRESET]) {
-      expect(PRESET_COPY[preset].description.length).toBeGreaterThan(10);
+      expect(presets[preset].description.length).toBeGreaterThan(10);
     }
   });
 
   it('すべて拒否の説明はデメリットも伝える（§14.2）', () => {
-    expect(PRESET_COPY.none.description).toContain('何も押さずに');
-    expect(PRESET_COPY.none.description).toContain('同じ画面が何度も出たり');
-    expect(PRESET_COPY.none.description).toContain('一部の機能が使えない');
+    expect(presetCopy().none.description).toContain('何も押さずに');
+    expect(presetCopy().none.description).toContain('同じ画面が何度も出たり');
+    expect(presetCopy().none.description).toContain('一部の機能が使えない');
   });
 
   it('共通の注意書きは 2 文とも持つ', () => {
-    expect(NOTES.alwaysRejected).toBe('追跡型の広告と用途が不明なものは、どの設定でも断ります。');
-    expect(NOTES.granularOnly).toContain('サイトが細かく選べるようになっている場合');
-    expect(NOTES.granularOnly).toContain('必要なもの以外を断ります');
+    expect(notes().alwaysRejected).toBe('追跡型の広告と用途が不明なものは、どの設定でも断ります。');
+    expect(notes().granularOnly).toContain('サイトが細かく選べるようになっている場合');
+    expect(notes().granularOnly).toContain('必要なもの以外を断ります');
   });
 
   it('UI に出す文言にカテゴリ記号や専門用語を混ぜない（§14.7）', () => {
     const texts = [
-      ...Object.values(CATEGORY_COPY).flatMap((copy) => [copy.name, copy.short]),
-      ...Object.values(PRESET_COPY).map((copy) => copy.name),
-      ESSENTIAL_COPY.name,
+      ...Object.values(categoryCopy()).flatMap((copy) => [copy.name, copy.short]),
+      ...Object.values(presetCopy()).map((copy) => copy.name),
+      essentialCopy().name,
     ];
     for (const text of texts) {
       expect(text, text).not.toMatch(/CMP|Consent-O-Matic|カテゴリ[A-FX]|\bcookie\b/i);

@@ -591,6 +591,19 @@ function canHide(container: DetectedContainer): boolean {
 }
 
 /**
+ * 対象モードで押せる候補がある容器か（heuristicContainers の③の 1 段目）。
+ * reject モードでは閉じる語（close）の候補は数えない。選択肢のない通知の［OK］は断ったことに
+ * ならない（「使い続ければ同意」型なら実質的な同意）ので、それだけの容器が、設定パネル層や
+ * hide で扱えたはずの本物のバナー（［すべて許可］［Cookie 設定］）を飛ばして先に押されないように
+ * する。close だけの容器は accept 側の close で canHide が真になるので、2 段目で面積順に扱われる
+ */
+function hasCandidates(container: DetectedContainer, deps: RunDeps): boolean {
+  const candidates = scoreCandidates(container.buttons, deps.mode, contextFor(container), scoreOptionsFor(deps));
+  if (deps.mode === 'accept') return candidates.length > 0;
+  return candidates.some((candidate) => candidate.kind !== 'close');
+}
+
+/**
  * 非表示にする。クリック候補は最小容器で探すが、消す範囲はそれを内包する最外側の容器
  * （BEM のボタン行だけを消してバナー本文が残るのを防ぐ）＋ 同じテキストの
  * fixed / absolute 祖先（バックドロップ）。
@@ -694,7 +707,17 @@ function noteContainer(container: DetectedContainer, deps: RunDeps): void {
     signals: container.signals,
   };
   deps.state.diagnosis = diagnosis;
-  if (deps.state.containerEl === container.el) return;
+  const prev = deps.state.containerEl;
+  if (prev === container.el) return;
+  // 内包関係に無い別要素へ採用が移ったら、前の容器の cloak は外す。猶予中に埋め込みの
+  // プレースホルダだけが先に見えていて cloak した後、本物のバナーが出て採用が移ると、
+  // プレースホルダ（動画の枠）が opacity:0 のまま監視窓の終わりまで残ってしまうため。
+  // 内包関係の切り替え（BEM の外側⇄内側、即決表の根への差し替え）では、外すとバナーの
+  // 一部がちらつくので従来どおり外さない（uncloakElement は属性を外すだけなので、
+  // DOM から外れた古い容器に当たっても害は無い）
+  if (prev !== null && !containsDeep(prev, container.el) && !containsDeep(container.el, prev)) {
+    uncloakElement(prev);
+  }
   deps.state.containerEl = container.el;
   deps.state.containerSeenAt = deps.env.now();
   // 容器が差し替わるたびに猶予の起点が戻るので、そのこと自体が診断の手がかりになる（§5-8）
@@ -756,21 +779,53 @@ function quickContainersOf(deps: RunDeps): DetectedContainer[] {
  * 正しい容器（ibm.com の TrustArc は、説明文だけの `DIV#truste-consent-text` が最小容器に
  * なり、設定導線「オプションの続き」が容器の外に出て設定パネル層へ進めなかった）。
  * 残りのリストはそのまま後ろに残す（hide の範囲を決める outermostContainer が使う）。
- * 戻り値は**先頭が採用容器**で、以降は順不同（②で先頭を差し替えるため、面積昇順の約束は
+ * ③ 採用する容器は面積の小さい順に 2 段で選ぶ:
+ * ⒜ 対象モードで押せる候補（scoreCandidates。reject では閉じる語を除く）がある最初の容器
+ * ⒝ 無ければ hide の見込みがある（canHide）最初の容器
+ * ⒞ それも無ければ従来どおり先頭（設定パネル層・fallback の判断はこれまでと同じ容器で行う）
+ * （accept モードでは canHide ＝許可候補があることなので、⒜と⒝は一致する。reject で閉じる語しか
+ * 無い通知は⒜に入れず⒝で扱う — hasCandidates を参照）。
+ * 埋め込みのプレースホルダ（Borlabs の `_brlbs-content-blocker`「Cookie 設定のせいで動画を
+ * 止めています［Unblock video］」）は Cookie 固有語と決定ボタンを持つので容器として採用されるが、
+ * 本物のバナー以下の面積だと先頭になり、reject が no-reject で終わって本物のバナーまで
+ * 届かなかった。Cookiebot の `cookieconsent-optout-marketing`（「Please［accept
+ * marketing-cookies］to watch this video.」）は許可候補を持つので canHide が真になり、
+ * 先頭のままだとプレースホルダが hide されて本物のバナーの「Reject all」が押されなかった。
+ * ⒝だけの容器（拒否できず hide しかできない）より⒜の容器を先に使うのは、押してよい条件は
+ * どの容器も evaluateContainer のハード条件を通っていて同じで、hide はあくまで断れなかった
+ * ときの代替だから。断れる容器があるならそちらを処理する（「内側の断片に許可だけ・外側の
+ * 容器に拒否がある」構造でも外側の拒否を押す）。fallback の設定（hide / leave）には依存させない
+ * （fallback=leave でも「［Accept all］だけ＋設定導線」のバナーは設定パネル層の対象なので、
+ * ⒝で拾う）。飛ばした容器もリストからは消さない。
+ * ②の「内包する即決表の容器」も③で選んだ容器を基準に探す。
+ * 戻り値は**先頭が採用容器**で、以降は順不同（②③で先頭を差し替えるため、面積昇順の約束は
  * そこで崩れる）。
  */
 function heuristicContainers(deps: RunDeps): DetectedContainer[] {
   const found = findContainers(deps.doc, deps.env);
-  if (deps.state.quickContainers.size === 0) return found;
+  const pressable = found.find((container) => hasCandidates(container, deps));
+  const chosen = pressable ?? found.find(canHide) ?? found[0];
+  if (chosen === undefined) {
+    // ① 1 つも拾えなかったときは即決表の容器を控えにする
+    return deps.state.quickContainers.size === 0 ? found : quickContainersOf(deps);
+  }
 
-  const fromQuick = quickContainersOf(deps);
-  const inner = found[0];
-  if (inner === undefined) return fromQuick;
-
-  const root = fromQuick.find((candidate) => containsDeep(candidate.el, inner.el));
-  if (root === undefined) return found;
+  // ② 選んだ容器を内包する即決表の容器があれば、そちらを先頭に据える
+  const root = deps.state.quickContainers.size === 0
+    ? undefined
+    : quickContainersOf(deps).find((candidate) => containsDeep(candidate.el, chosen.el));
+  const head = root ?? chosen;
+  if (chosen !== found[0]) {
+    // 最終的な先頭が決まってから出す（即決表の根に差し替えたならそれも分かるように）
+    const skipped = found.slice(0, found.indexOf(chosen)).map((c) => describeElement(c.el));
+    const target = head.el === chosen.el
+      ? describeElement(chosen.el)
+      : `${describeElement(chosen.el)} → 即決表の容器 ${describeElement(head.el)}`;
+    const why = pressable === undefined ? '（押せる候補のある容器が無いので hide できる容器）' : '';
+    traceOnce(deps, `ヒューリスティック: 押せる候補の無い容器 ${skipped.join(' / ')} を飛ばして ${target}${why} を使う`);
+  }
   // すでに拾えている容器なら並べ直すだけ（同じ要素を二重に持たせない）
-  return [root, ...found.filter((container) => container.el !== root.el)];
+  return [head, ...found.filter((container) => container.el !== head.el)];
 }
 
 async function layerHeuristic(deps: RunDeps): Promise<RunOutcome | null> {

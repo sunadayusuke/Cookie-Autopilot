@@ -102,7 +102,8 @@ body {
 
 .result-chip-label {
   flex: none;
-  width: 28px;
+  /* 日本語の「許可」「拒否」に合わせた幅。英語は下で語長に合わせて広げる */
+  min-width: 28px;
   padding-top: 2px;
   font-size: 12px;
   color: var(--fg-muted);
@@ -119,8 +120,15 @@ body {
   padding-right: var(--space-3);
 }
 
+/* 英語の Allowed / Declined は 28px に収まらず、2 行のチップの開始位置がずれる。
+   日本語の 28px はそのままに、英語のときだけ長い方（Declined）に合わせて揃える */
+html[lang='en'] .result-chip-label {
+  min-width: 50px;
+}
+
+/* ラベルは縮めず、はみ出す分は右の要約（省略記号つき）で吸収する */
 .row-button .control-row-label {
-  flex: 0 1 auto;
+  flex: none;
   white-space: nowrap;
 }
 

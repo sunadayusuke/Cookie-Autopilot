@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>fixture: Continue with necessary cookies</title>
+    <script src="/content.js"></script>
+    <style>
+      body { margin: 0; font: 15px/1.8 system-ui, -apple-system, 'Hiragino Sans', sans-serif; }
+      main { padding: 24px; max-width: 720px; }
+      pre { background: #f3f4f6; padding: 12px; border-radius: 8px; min-height: 3em; }
+      .fx-cookie-bar {
+        position: fixed; left: 0; right: 0; bottom: 0; z-index: 10;
+        display: flex; gap: 16px; align-items: center; justify-content: space-between; flex-wrap: wrap;
+        padding: 16px 24px; background: #111827; color: #f9fafb;
+      }
+      .fx-cookie-bar p { margin: 0; flex: 1 1 320px; }
+      .fx-actions { display: flex; gap: 12px; flex-wrap: wrap; }
+      .fx-actions button { padding: 8px 16px; border: 0; border-radius: 8px; font-size: 14px; cursor: pointer; }
+      .fx-allow { background: #2563eb; color: #fff; }
+      .fx-min { background: #e5e7eb; color: #111827; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Continue with necessary cookies</h1>
+      <p>reject モードでは「Continue with necessary cookies」（必要最小系）が、accept モードでは「Accept all」が押されます。</p>
+      <p><code>?mode=accept</code> を付けると accept モードになります。</p>
+      <pre id="log"></pre>
+    </main>
+
+    <div class="fx-cookie-bar" id="fx-cookie-necessary">
+      <p>We use cookies to make this site work and to understand how you use it.</p>
+      <div class="fx-actions">
+        <button class="fx-allow">Accept all</button>
+        <button class="fx-min">Continue with necessary cookies</button>
+      </div>
+    </div>
+
+    <script>
+      (function () {
+        var log = document.getElementById('log');
+        function record(text) {
+          log.textContent += '[' + new Date().toLocaleTimeString('ja-JP') + '] ' + text + '\n';
+        }
+        document.addEventListener(
+          'click',
+          function (event) {
+            var el = event.target.closest('button, a, [role="button"], input');
+            if (el) record('クリック: ' + (el.textContent || el.value || '').trim());
+          },
+          true,
+        );
+        var banner = document.getElementById('fx-cookie-necessary');
+        banner.addEventListener('click', function (event) {
+          if (!event.target.closest('button')) return;
+          record('バナーを閉じました');
+          banner.remove();
+        });
+      })();
+    </script>
+  </body>
+</html>

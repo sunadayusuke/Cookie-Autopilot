@@ -7,6 +7,7 @@ import type { EngineEnv } from '../src/engine/env';
 import type { RunDeps } from '../src/engine/run';
 import { CLOAK_ATTR, HIDDEN_ATTR, SCROLL_ATTR } from '../src/engine/cloak';
 import { cloakSelectors } from '../src/engine/cmpQuick';
+import { findContainers } from '../src/engine/detect';
 import {
   CLICK_WAIT_MS,
   FALLBACK_GRACE_MS,
@@ -1317,4 +1318,388 @@ describe('進行ログの重複を抑える（OBS-002）', () => {
     expect(lines.some((line) => line.startsWith('容器: DIV#bar.cookie-bar'))).toBe(true);
     expect(lines).toContain('ヒューリスティック: 候補 0');
   });
+});
+
+describe('押せる候補の無い容器を飛ばす（heuristicContainers の③）', () => {
+  /**
+   * Cookie 設定のせいで動画を止めている埋め込みのプレースホルダ（fixtures/en-unblock-placeholder.html 相当）。
+   * Cookie を名乗る class と決定ボタンを持つので容器として採用されるが、Unblock は拒否語にも
+   * 許可語にもしないので、どちらのモードでも押せる候補が無く、canHide も偽になる。
+   */
+  const placeholder = (id: string): string => `
+    <div id="${id}" class="cookie-content-blocker">
+      <p>This video is blocked because of your cookie settings.</p>
+      <button id="${id}-unblock">Unblock video</button>
+    </div>
+  `;
+
+  it('先頭の容器に押せる候補も hide の見込みも無ければ、次の容器の拒否を押す', async () => {
+    // 同じ大きさなので、DOM 順で先に来るプレースホルダが findContainers の先頭になる
+    setBody(`${placeholder('ph')}${BANNER_HTML}`);
+    const ph = document.getElementById('ph') as HTMLElement;
+    const bar = document.getElementById('bar') as HTMLElement;
+    closeOnClick('deny', bar);
+    const clicked = recordClicks();
+    const lines: string[] = [];
+    const { deps } = harness({}, undefined, {
+      env: { trace: (...args: unknown[]) => void lines.push(String(args[0])) },
+    });
+
+    expect(await runOnce(deps)).toMatchObject({
+      status: 'handled',
+      method: 'heuristic',
+      action: 'reject',
+      clickedText: '拒否',
+    });
+    expect(clicked).toEqual(['拒否']);
+    expect(bar.isConnected).toBe(false);
+    // プレースホルダは押しも消しも cloak もしない
+    expect(ph.isConnected).toBe(true);
+    expect(ph.style.display).toBe('');
+    expect(ph.hasAttribute(HIDDEN_ATTR)).toBe(false);
+    expect(ph.hasAttribute(CLOAK_ATTR)).toBe(false);
+    expect(lines).toContain(
+      'ヒューリスティック: 押せる候補の無い容器 DIV#ph.cookie-content-blocker を飛ばして DIV#bar.cookie-bar を使う',
+    );
+  });
+
+  it('accept モードでも次の容器の許可を押す', async () => {
+    setBody(`${placeholder('ph')}${BANNER_HTML}`);
+    const ph = document.getElementById('ph') as HTMLElement;
+    const bar = document.getElementById('bar') as HTMLElement;
+    closeOnClick('agree', bar);
+    const clicked = recordClicks();
+    const { deps } = harness({}, undefined, { mode: 'accept' });
+
+    expect(await runOnce(deps)).toMatchObject({
+      status: 'handled',
+      method: 'heuristic',
+      action: 'accept',
+      clickedText: '同意する',
+    });
+    expect(clicked).toEqual(['同意する']);
+    expect(bar.isConnected).toBe(false);
+    expect(ph.isConnected).toBe(true);
+    expect(ph.hasAttribute(CLOAK_ATTR)).toBe(false);
+  });
+
+  it('すべての容器が押せなければ、従来どおり先頭の容器で unhandled（no-reject）になる', async () => {
+    setBody(`${placeholder('ph')}${placeholder('ph2')}`);
+    const ph = document.getElementById('ph') as HTMLElement;
+    const ph2 = document.getElementById('ph2') as HTMLElement;
+    const clicked = recordClicks();
+    const { deps } = harness();
+
+    expect(await runOnce(deps)).toMatchObject({ status: 'unhandled', reason: 'no-reject' });
+    expect(clicked).toEqual([]);
+    // 判断に使ったのは先頭の容器（飛ばさない）
+    expect(deps.state.diagnosis?.container).toBe('DIV#ph.cookie-content-blocker');
+    for (const el of [ph, ph2]) {
+      expect(el.style.display, el.id).toBe('');
+      expect(el.hasAttribute(HIDDEN_ATTR), el.id).toBe(false);
+      expect(el.hasAttribute(CLOAK_ATTR), el.id).toBe(false);
+    }
+  });
+
+  it('先頭が［同意する］だけ（hide しかできない）で後ろに拒否のある別の容器があれば、後ろの拒否を押し先頭は hide しない', async () => {
+    // hide は断れなかったときの代替なので、断れる容器があるならそちらを処理する（③⒜が⒝より先）
+    setBody(`
+      ${NO_REJECT_HTML}
+      <div id="bar2" class="cookie-notice" style="position:fixed">
+        <p>Cookie の利用について</p>
+        <button id="deny">拒否</button>
+        <button id="agree2">同意する</button>
+      </div>
+    `);
+    const bar = document.getElementById('bar') as HTMLElement;
+    const bar2 = document.getElementById('bar2') as HTMLElement;
+    closeOnClick('deny', bar2);
+    const clicked = recordClicks();
+    const { deps } = harness();
+
+    expect(await runOnce(deps)).toMatchObject({
+      status: 'handled',
+      method: 'heuristic',
+      action: 'reject',
+      clickedText: '拒否',
+    });
+    expect(clicked).toEqual(['拒否']);
+    expect(bar2.isConnected).toBe(false);
+    expect(bar.style.display).toBe('');
+    expect(bar.hasAttribute(HIDDEN_ATTR)).toBe(false);
+    expect(bar.hasAttribute(CLOAK_ATTR)).toBe(false);
+  });
+
+  it('reject で閉じる語しか無い通知は⒜に入れない（先頭の本物のバナーを飛ばして［OK］を押さない）', async () => {
+    // 「使い続ければ同意」型の通知の［OK］は断ったことにならない。先頭の［同意する］［設定］の
+    // バナーを従来どおり処理（ここでは設定パネルが出ないので hide）し、通知の OK は押さない
+    setBody(`
+      ${NO_REJECT_HTML}
+      <div id="notice" class="cookie-notice" style="position:fixed">
+        <p>By continuing to use this site you agree to our use of cookies.</p>
+        <button id="ok">OK</button>
+      </div>
+    `);
+    const bar = document.getElementById('bar') as HTMLElement;
+    const notice = document.getElementById('notice') as HTMLElement;
+    closeOnClick('ok', notice);
+    const clicked = recordClicks();
+    const { deps } = harness();
+
+    expect(await runOnce(deps)).toMatchObject({ status: 'handled', method: 'hide' });
+    expect(clicked).not.toContain('OK');
+    expect(clicked).not.toContain('同意する');
+    expect(notice.isConnected).toBe(true);
+    expect(bar.style.display).toBe('none');
+  });
+
+  it('どの容器にも拒否候補が無ければ、hide できる先頭の容器を従来どおり hide する', async () => {
+    // ③⒝: 拒否候補が無い容器どうしでは面積順（同じ大きさなら DOM 順）の先頭を優先する
+    setBody(`
+      ${NO_REJECT_HTML}
+      <div id="bar2" class="cookie-notice" style="position:fixed">
+        <p>Cookie の利用について</p>
+        <button id="agree2">同意する</button>
+      </div>
+    `);
+    const bar = document.getElementById('bar') as HTMLElement;
+    const bar2 = document.getElementById('bar2') as HTMLElement;
+    const clicked = recordClicks();
+    const { deps } = harness();
+
+    expect(await runOnce(deps)).toMatchObject({ status: 'handled', method: 'hide' });
+    expect(clicked).not.toContain('同意する');
+    expect(bar.style.display).toBe('none');
+    expect(bar2.style.display).toBe('');
+    expect(bar2.hasAttribute(HIDDEN_ATTR)).toBe(false);
+  });
+
+  it('fallback=leave でも［同意する］＋設定だけの容器は飛ばさない（canHide は fallback の設定に依存しない）', async () => {
+    // 先頭は押せる候補も hide の見込みも無いプレースホルダ。他に拒否候補のある容器は無いので、
+    // ③⒝で［同意する］だけの容器が採用される（設定パネル層・fallback の対象になる）
+    setBody(`${placeholder('ph')}${NO_REJECT_HTML}`);
+    const bar = document.getElementById('bar') as HTMLElement;
+    const clicked = recordClicks();
+    const lines: string[] = [];
+    const { deps } = harness({ fallbackWhenNoReject: 'leave' }, undefined, {
+      env: { trace: (...args: unknown[]) => void lines.push(String(args[0])) },
+    });
+
+    expect(await runOnce(deps)).toMatchObject({ status: 'unhandled', reason: 'no-reject' });
+    expect(deps.state.diagnosis?.container).toBe('DIV#bar.cookie-bar');
+    expect(lines).toContain(
+      'ヒューリスティック: 押せる候補の無い容器 DIV#ph.cookie-content-blocker を飛ばして DIV#bar.cookie-bar' +
+        '（押せる候補のある容器が無いので hide できる容器） を使う',
+    );
+    expect(clicked).not.toContain('同意する');
+    expect(clicked).not.toContain('Unblock video');
+    expect(bar.style.display).toBe('');
+    expect(bar.hasAttribute(CLOAK_ATTR)).toBe(false);
+  });
+
+  it('すべて拒否（pressCloseOnNotice: false）で［OK］だけの通知が先頭なら、飛ばさず従来どおり hide する', async () => {
+    // close は reject の候補にならないが、accept 側の close で canHide が真になる（③⒝）
+    setBody(`${NOTICE_ONLY_HTML}${placeholder('ph')}`);
+    const bar = document.getElementById('bar') as HTMLElement;
+    const ph = document.getElementById('ph') as HTMLElement;
+    const clicked = recordClicks();
+    const { deps } = harness({ pressCloseOnNotice: false });
+
+    expect(await runOnce(deps)).toMatchObject({ status: 'handled', method: 'hide', decision: 'hidden' });
+    expect(clicked).toEqual([]);
+    expect(bar.style.display).toBe('none');
+    expect(ph.style.display).toBe('');
+    expect(ph.hasAttribute(HIDDEN_ATTR)).toBe(false);
+  });
+
+  /**
+   * Cookiebot 公式の埋め込みプレースホルダ（`cookieconsent-optout-marketing`）。
+   * 許可候補（accept marketing-cookies）を持つので canHide が真になり、先頭のままだと
+   * reject でプレースホルダが hide されて本物のバナーの拒否が押されなかった。
+   */
+  it('Cookiebot 型のプレースホルダが同じ大きさで先頭でも、本物のバナーの Reject all を押し、プレースホルダは消さない', async () => {
+    setBody(`
+      <div id="ph" class="cookieconsent-optout-marketing">
+        Please <a id="ph-accept" href="javascript:Cookiebot.renew()">accept marketing-cookies</a> to watch this video.
+      </div>
+      <div id="bar" class="cookie-bar" style="position:fixed">
+        <p>We use cookies to personalise content and ads, and to analyse our traffic.</p>
+        <button id="accept">Accept all</button>
+        <button id="deny">Reject all</button>
+      </div>
+    `);
+    const ph = document.getElementById('ph') as HTMLElement;
+    const bar = document.getElementById('bar') as HTMLElement;
+    // 前提: プレースホルダも容器として採用され、DOM 順で先頭になる
+    expect(findContainers(document, testEnv())[0]?.el).toBe(ph);
+    closeOnClick('deny', bar);
+    const clicked = recordClicks();
+    const { deps } = harness();
+
+    expect(await runOnce(deps)).toMatchObject({
+      status: 'handled',
+      method: 'heuristic',
+      action: 'reject',
+      clickedText: 'rejectall',
+    });
+    expect(clicked).toEqual(['Reject all']);
+    expect(bar.isConnected).toBe(false);
+    expect(ph.style.display).toBe('');
+    expect(ph.hasAttribute(HIDDEN_ATTR)).toBe(false);
+    expect(ph.hasAttribute(CLOAK_ATTR)).toBe(false);
+  });
+
+  it('プレースホルダが先頭で、本物のバナーを内包する即決表の容器があれば、その根を先頭に据える（②③）', async () => {
+    // TrustArc の即決表は reject セレクタ（#truste-consent-required）が無いので容器だけを覚える
+    setBody(`
+      <div id="ph" class="cookie-content-blocker" data-w="300" data-h="100">
+        <p>This video is blocked because of your cookie settings.</p>
+        <button id="ph-unblock">Unblock video</button>
+      </div>
+      <div id="truste-consent-track" style="position:fixed" data-w="1200" data-h="200">
+        <div id="inner" class="cookie-bar" data-w="600" data-h="120">
+          <p>当サイトでは Cookie を使用しています。</p>
+          <button id="deny">拒否</button>
+          <button id="agree">同意する</button>
+        </div>
+      </div>
+    `);
+    const ph = document.getElementById('ph') as HTMLElement;
+    const track = document.getElementById('truste-consent-track') as HTMLElement;
+    closeOnClick('deny', track);
+    const clicked = recordClicks();
+    const lines: string[] = [];
+    const { deps } = harness({}, undefined, {
+      env: { getRect: sizedRect, trace: (...args: unknown[]) => void lines.push(String(args[0])) },
+    });
+
+    expect(await runOnce(deps)).toMatchObject({
+      status: 'handled',
+      method: 'heuristic',
+      action: 'reject',
+      clickedText: '拒否',
+    });
+    expect(clicked).toEqual(['拒否']);
+    // 採用したのは即決表の根（中の断片ではない）
+    expect(deps.state.diagnosis?.container).toBe('DIV#truste-consent-track');
+    // トレースは最終的な先頭が決まってから出す
+    expect(lines).toContain(
+      'ヒューリスティック: 押せる候補の無い容器 DIV#ph.cookie-content-blocker を飛ばして' +
+        ' DIV#inner.cookie-bar → 即決表の容器 DIV#truste-consent-track を使う',
+    );
+    expect(ph.style.display).toBe('');
+    expect(ph.hasAttribute(CLOAK_ATTR)).toBe(false);
+  });
+
+  it('猶予中に本物のバナーが出て採用が移ったら、プレースホルダの cloak を外す', async () => {
+    setBody(placeholder('ph'));
+    const ph = document.getElementById('ph') as HTMLElement;
+    const midway: (string | null)[] = [];
+    let added = false;
+    const { deps } = harness({}, (now) => {
+      if (added || now < FALLBACK_RETRY_MS * 2) return;
+      // 本物のバナーが出る直前まで、プレースホルダは採用容器として cloak されている
+      midway.push(ph.getAttribute(CLOAK_ATTR));
+      added = true;
+      document.body.insertAdjacentHTML('beforeend', BANNER_HTML);
+      closeOnClick('deny', document.getElementById('bar') as HTMLElement);
+    });
+    const clicked = recordClicks();
+
+    expect(await runOnce(deps)).toMatchObject({
+      status: 'handled',
+      method: 'heuristic',
+      action: 'reject',
+      clickedText: '拒否',
+    });
+    expect(midway).toEqual(['']);
+    expect(clicked).toEqual(['拒否']);
+    expect(document.getElementById('bar')).toBeNull();
+    // 採用が内包関係に無い別要素へ移ったので、プレースホルダ（動画の枠）は見せ直す
+    expect(ph.hasAttribute(CLOAK_ATTR)).toBe(false);
+    expect(ph.style.display).toBe('');
+  });
+
+  it('内包関係の切り替え（外側 → 内側）では前の容器の cloak を外さない', async () => {
+    setBody(`
+      <main><h1>記事</h1><p>本文です。</p></main>
+      <div id="outer" class="cookie-consent" style="position:fixed" data-w="1200" data-h="160">
+        <p>当サイトでは Cookie を使用しています。</p>
+        <button id="accept">Accept all cookies</button>
+      </div>
+    `);
+    const outer = document.getElementById('outer') as HTMLElement;
+    const lines: string[] = [];
+    let added = false;
+    const { deps } = harness(
+      {},
+      (now) => {
+        if (added || now < FALLBACK_RETRY_MS * 2) return;
+        added = true;
+        // 遅れて描画されるボタン行（BEM の内側の容器）。こちらの方が小さいので採用が移る
+        outer.insertAdjacentHTML(
+          'beforeend',
+          `<div id="actions" class="cookie-consent__actions" data-w="400" data-h="48">
+            <button id="deny">Reject all cookies</button>
+            <button id="settings">Cookie settings</button>
+          </div>`,
+        );
+      },
+      { env: { getRect: sizedRect, trace: (...args: unknown[]) => void lines.push(String(args[0])) } },
+    );
+    // 押した瞬間に外側の容器がまだ cloak されているか（外すとバナーの一部がちらつく）
+    const atClick: (string | null)[] = [];
+    onClick((event) => {
+      if ((event.target as Element).id !== 'deny') return;
+      atClick.push(outer.getAttribute(CLOAK_ATTR));
+      outer.remove();
+    });
+
+    expect(await runOnce(deps)).toMatchObject({
+      status: 'handled',
+      method: 'heuristic',
+      action: 'reject',
+      clickedText: 'rejectallcookies',
+    });
+    // 採用が内側の容器に移ったことの確認（移っていなければこのテストは何も見ていない）
+    expect(lines.some((line) => line.startsWith('容器: DIV#actions.cookie-consent__actions'))).toBe(true);
+    expect(atClick).toEqual(['']);
+  });
+});
+
+describe('Unblock 系の文言はどちらのモードでも押さない（scoreCandidates）', () => {
+  /**
+   * 埋め込みのプレースホルダの「ブロック解除」は押すと同意になる。
+   * "Accept required service and unblock content"（Borlabs 3 の既定文言）は必要最小系の
+   * `(accept|allow|use|enable)…required` に、「ブロックをすべて解除」は拒否語の `(すべて|全て)解除` に
+   * 当たるので、語彙だけでは reject で押されてしまう（isUnblockWord が無いと落ちるのはこの 2 つ）。
+   * "Always unblock" はもともとどの語彙にも当たらないので、将来の語彙追加に対する歯止めとして置く。
+   */
+  const LABELS = ['Accept required service and unblock content', 'Always unblock', 'ブロックをすべて解除'];
+
+  for (const label of LABELS) {
+    for (const mode of ['reject', 'accept'] as const) {
+      it(`${mode}: 「${label}」を押さない`, async () => {
+        setBody(`
+          <main><h1>記事</h1><p>本文です。</p></main>
+          <div id="ph" class="cookie-content-blocker">
+            <p>This video is blocked because of your cookie settings. Cookie の設定により動画をブロックしています。</p>
+            <button id="ph-unblock">${label}</button>
+          </div>
+        `);
+        const ph = document.getElementById('ph') as HTMLElement;
+        // 前提: プレースホルダは容器として採用される（採用されなければこのテストは何も見ていない）
+        expect(findContainers(document, testEnv()).some((container) => container.el === ph)).toBe(true);
+        const clicked = recordClicks();
+        const { deps } = harness({}, undefined, { mode });
+
+        const outcome = await runOnce(deps);
+        expect(outcome?.status ?? null).not.toBe('handled');
+        expect(clicked).toEqual([]);
+        expect(ph.style.display).toBe('');
+        expect(ph.hasAttribute(HIDDEN_ATTR)).toBe(false);
+        expect(ph.hasAttribute(CLOAK_ATTR)).toBe(false);
+      });
+    }
+  }
 });

@@ -309,6 +309,20 @@ describe('ボタンの選び方', () => {
     expect(findSaveButton(panel, env)).toMatchObject({ kind: 'save', text: '選択を保存' });
   });
 
+  it('ブロック解除語は拒否語・必要最小系に当たっても拒否ボタンにしない（押すと同意になる）', () => {
+    for (const label of ['ブロックをすべて解除', 'Accept required service and unblock content']) {
+      setBody(`
+        <div id="panel" role="dialog">
+          <button id="unblock">${label}</button>
+          <button id="save">選択を保存</button>
+        </div>
+      `);
+      const save = findSaveButton(document.getElementById('panel') as Element, env);
+      expect(save, label).toMatchObject({ kind: 'save' });
+      expect(save?.el.id, label).toBe('save');
+    }
+  });
+
   it('「設定の保存」系の言い回しも保存ボタンにする（F3）', () => {
     for (const label of ['設定の保存', '選択の保存', '保存する', '選んだ設定を保存', 'この設定で保存']) {
       setBody(`

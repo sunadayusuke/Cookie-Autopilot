@@ -1,10 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { buildSelector, cancelPicker, startPicker } from '../src/content/picker';
+import { setLang } from '../src/shared/i18n';
 import { setBody } from './helpers';
 
 const byId = (id: string): Element => document.getElementById(id) as Element;
 
 beforeEach(() => {
+  // トーストの文言は UI 言語で変わる（§14.10）。ここでは日本語で検証する
+  setLang('ja');
   setBody('');
 });
 

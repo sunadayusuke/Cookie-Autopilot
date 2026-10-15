@@ -17,27 +17,30 @@
   <body>
     <main class="onboarding">
       <div class="onboarding-card">
-        <p id="extension-notice" class="notice" hidden>
+        <p id="extension-notice" class="notice" data-i18n="common.extensionNotice" hidden>
           拡張として読み込むと有効になります。ここでは見た目だけ確認できます。
         </p>
 
         <header class="onboarding-header">
-          <h1>Cookie Autopilot へようこそ</h1>
-          <p class="onboarding-lead">
+          <div class="onboarding-header-top">
+            <h1 data-i18n="onboarding.title">Cookie Autopilot へようこそ</h1>
+            <div id="lang-toggle-slot"></div>
+          </div>
+          <p class="onboarding-lead" data-i18n="onboarding.lead">
             サイトを開いたときに出る Cookie の同意画面に、あなたの代わりに答えます。
           </p>
         </header>
 
         <section class="onboarding-section" aria-labelledby="preset-heading">
-          <h2 id="preset-heading" class="onboarding-section-title">どこまで許可しますか？</h2>
-          <p id="custom-notice" class="notice" hidden>
+          <h2 id="preset-heading" class="onboarding-section-title" data-i18n="common.presetHeading">どこまで許可しますか？</h2>
+          <p id="custom-notice" class="notice" data-i18n="onboarding.customNotice" hidden>
             現在は詳細設定で個別に調整されています。ここで選ぶと上書きされます。
           </p>
           <div id="preset-picker-slot"></div>
         </section>
 
         <section class="onboarding-section" aria-labelledby="category-heading">
-          <h2 id="category-heading" class="onboarding-section-title">それぞれの Cookie は何をするの？</h2>
+          <h2 id="category-heading" class="onboarding-section-title" data-i18n="common.categoryHeading">それぞれの Cookie は何をするの？</h2>
           <div id="category-table-slot"></div>
         </section>
 
@@ -49,20 +52,26 @@
         <footer class="onboarding-footer">
           <div id="hud" class="hud hud-fixed-center" role="status" aria-live="assertive" hidden></div>
           <div id="onboarding-actions" class="onboarding-actions">
-            <button type="button" id="start-btn" class="push-btn push-btn-lg push-btn-dark">この設定で始める</button>
+            <button type="button" id="start-btn" class="push-btn push-btn-lg push-btn-dark" data-i18n="onboarding.start">この設定で始める</button>
           </div>
           <div id="onboarding-done" class="onboarding-done" hidden>
-            <h2 id="onboarding-done-heading" class="onboarding-done-heading" role="status">設定しました</h2>
-            <p class="onboarding-done-message">Cookie の同意画面が出るサイトを開いてみてください。</p>
+            <h2 id="onboarding-done-heading" class="onboarding-done-heading" role="status" data-i18n="onboarding.doneHeading">設定しました</h2>
+            <p class="onboarding-done-message" data-i18n="onboarding.doneMessage">Cookie の同意画面が出るサイトを開いてみてください。</p>
             <p id="onboarding-done-summary" class="onboarding-done-summary"></p>
             <p id="onboarding-done-countdown" class="onboarding-done-countdown" hidden></p>
             <div id="onboarding-done-actions" class="onboarding-done-actions">
-              <button type="button" id="close-now-btn" class="push-btn push-btn-lg push-btn-dark" hidden>
+              <button
+                type="button"
+                id="close-now-btn"
+                class="push-btn push-btn-lg push-btn-dark"
+                data-i18n="onboarding.closeNow"
+                hidden
+              >
                 今すぐ閉じる
               </button>
               <div class="onboarding-done-secondary-actions">
-                <button type="button" id="keep-open-btn" class="btn btn-ghost" hidden>閉じない</button>
-                <button type="button" id="open-options-btn" class="btn btn-ghost">詳細設定を開く</button>
+                <button type="button" id="keep-open-btn" class="btn btn-ghost" data-i18n="onboarding.keepOpen" hidden>閉じない</button>
+                <button type="button" id="open-options-btn" class="btn btn-ghost" data-i18n="onboarding.openOptions">詳細設定を開く</button>
               </div>
             </div>
           </div>

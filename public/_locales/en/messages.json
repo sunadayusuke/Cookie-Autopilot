@@ -1,0 +1,10 @@
+{
+  "extName": {
+    "message": "Cookie Autopilot",
+    "description": "Extension name shown in Chrome and on the store."
+  },
+  "extDescription": {
+    "message": "Answers cookie consent banners for you: clicks the reject button automatically, and hides the banner when it can't find one.",
+    "description": "Extension description shown in Chrome and on the store."
+  }
+}

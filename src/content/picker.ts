@@ -2,6 +2,7 @@
 
 import { setCloakSuspended, setHiddenSuspended } from '../engine/cloak';
 import { elementText } from '../engine/normalize';
+import { tPicker } from '../shared/i18n/runtime';
 import { isForbiddenHard } from '../shared/phrases';
 
 /** picker で拾えるクリック可能要素 */
@@ -14,10 +15,6 @@ const TOAST_BG = '#111827';
 const TOAST_BG_DANGER = '#ce0000';
 /** 登録を断ったメッセージを出しておく時間 */
 const REJECT_TOAST_MS = 2400;
-
-/** 登録を断る理由（トーストに出す文言） */
-const REJECT_FORBIDDEN = 'このボタンは登録できません（購入・削除など危険な操作に見えます）';
-const REJECT_NO_TEXT = '文言のないボタンは登録できません。文字の入ったボタンを選んでください';
 
 /** 安定セレクタに使う属性（優先順） */
 const STABLE_ATTRS = ['data-testid', 'data-test', 'data-tid', 'data-cy', 'data-hook', 'name', 'aria-label'] as const;
@@ -180,12 +177,14 @@ function eventPath(event: Event): EventTarget[] {
 
 /** トーストを「◯◯ボタンをクリックしてください（Esc で中止）」に戻す */
 function fillToast(doc: Document, toast: HTMLElement, action: 'reject' | 'accept'): void {
+  const copy = tPicker();
   toast.textContent = '';
   toast.style.background = TOAST_BG;
+  if (copy.clickPrefix) toast.appendChild(doc.createTextNode(copy.clickPrefix));
   const label = doc.createElement('strong');
-  label.textContent = action === 'reject' ? '断るボタン' : '許可ボタン';
+  label.textContent = action === 'reject' ? copy.rejectLabel : copy.acceptLabel;
   toast.appendChild(label);
-  toast.appendChild(doc.createTextNode('をクリックしてください（Esc で中止）'));
+  toast.appendChild(doc.createTextNode(copy.clickSuffix));
 }
 
 /**
@@ -297,12 +296,12 @@ export function startPicker(options: PickerOptions): void {
     // 文言はカスタムルールの照合に必ず使うので、空のボタン（aria-label も title も無い
     // アイコンボタン）を登録しても二度と押せない。その場で断る
     if (text === '') {
-      if (current) rejectPick(current, REJECT_NO_TEXT);
+      if (current) rejectPick(current, tPicker().rejectNoText);
       return;
     }
     // 購入・削除などのボタンは教えられても登録しない（HARD 禁止語）
     if (isForbiddenHard(text)) {
-      if (current) rejectPick(current, REJECT_FORBIDDEN);
+      if (current) rejectPick(current, tPicker().rejectForbidden);
       return;
     }
     const selector = buildSelector(el, doc);

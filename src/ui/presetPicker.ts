@@ -5,12 +5,13 @@
 // 一段小さいカード（.preset-card-compact。チップは出さない）として置く。各カードは視覚的に
 // 隠した radio + ラベルで、選択状態は theme.css の .preset-card（非選択 白地 + 細枠 /
 // 選択 白地 + 黒枠）で表現する。
-// 文言は copy.ts（PRESET_COPY / CATEGORY_COPY / ESSENTIAL_COPY）だけを使い、ここではハード
+// 文言は copy.ts（presetCopy / categoryCopy / essentialCopy）だけを使い、ここではハード
 // コードしない。
 
 import type { Preset } from '../shared/types';
 import { EXTRA_PRESET } from '../shared/types';
-import { CATEGORY_COPY, ESSENTIAL_COPY, PRESET_COPY } from '../shared/copy';
+import { categoryCopy, essentialCopy, presetCopy } from '../shared/copy';
+import { t } from '../shared/i18n';
 import { PRESET_ORDER, categoriesForPreset } from '../shared/presets';
 
 export interface PresetPickerOptions {
@@ -44,7 +45,7 @@ export function createPresetPicker(options: PresetPickerOptions): PresetPickerHa
 
   /** 1 枚ぶん。compact は 4 つ目（すべて拒否）用で、一段小さくチップを出さない */
   function buildCard(preset: Preset, compact: boolean): HTMLElement {
-    const copy = PRESET_COPY[preset];
+    const copy = presetCopy()[preset];
 
     const card = document.createElement('label');
     card.className = compact ? 'preset-card preset-card-compact' : 'preset-card';
@@ -70,7 +71,7 @@ export function createPresetPicker(options: PresetPickerOptions): PresetPickerHa
     if (copy.recommended) {
       const badge = document.createElement('span');
       badge.className = 'badge badge-success';
-      badge.textContent = 'おすすめ';
+      badge.textContent = t().common.recommended;
       head.append(badge);
     }
 
@@ -83,8 +84,9 @@ export function createPresetPicker(options: PresetPickerOptions): PresetPickerHa
 
     const chips = document.createElement('div');
     chips.className = 'chip-row';
-    chips.append(createChip(ESSENTIAL_COPY.name));
-    for (const category of categoriesForPreset(preset)) chips.append(createChip(CATEGORY_COPY[category].name));
+    chips.append(createChip(essentialCopy().name));
+    const categories = categoryCopy();
+    for (const category of categoriesForPreset(preset)) chips.append(createChip(categories[category].name));
     card.append(chips);
     return card;
   }

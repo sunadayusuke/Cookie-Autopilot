@@ -7,7 +7,8 @@
 // 文言は copy.ts だけを使い、ここではハードコードしない。
 
 import type { CategoryCopy } from '../shared/copy';
-import { CATEGORY_COPY, ESSENTIAL_COPY, PRESET_COPY } from '../shared/copy';
+import { categoryCopy, essentialCopy, presetCopy } from '../shared/copy';
+import { t } from '../shared/i18n';
 import { PRESET_ORDER, categoriesForPreset } from '../shared/presets';
 import type { CategoryKey } from '../shared/types';
 import { CATEGORY_KEYS } from '../shared/types';
@@ -37,7 +38,8 @@ interface CategoryRow {
 }
 
 function categoryRows(): CategoryRow[] {
-  return [{ key: null, copy: ESSENTIAL_COPY }, ...CATEGORY_KEYS.map((key) => ({ key, copy: CATEGORY_COPY[key] }))];
+  const categories = categoryCopy();
+  return [{ key: null, copy: essentialCopy() }, ...CATEGORY_KEYS.map((key) => ({ key, copy: categories[key] }))];
 }
 
 export function createCategoryTable(options: CategoryTableOptions = {}): CategoryTableHandle {
@@ -68,16 +70,17 @@ function buildLegend(toggles: CategoryTableToggles | undefined): HTMLElement {
 
   const cols = document.createElement('span');
   cols.className = 'category-legend-cols';
+  const presets = presetCopy();
   for (const preset of PRESET_ORDER) {
     const col = document.createElement('span');
     col.className = 'category-legend-col';
-    col.textContent = PRESET_COPY[preset].name;
+    col.textContent = presets[preset].name;
     cols.append(col);
   }
   if (toggles) {
     const col = document.createElement('span');
     col.className = 'category-legend-col category-legend-col-toggle';
-    col.textContent = 'あなたの設定';
+    col.textContent = t().common.yourSetting;
     cols.append(col);
   }
   legend.append(cols);
@@ -122,9 +125,10 @@ function buildRow(
 
   const marks = document.createElement('span');
   marks.className = 'category-marks';
+  const presets = presetCopy();
   for (const preset of PRESET_ORDER) {
     const allowed = row.key === null || categoriesForPreset(preset).includes(row.key);
-    marks.append(createMark(allowed, PRESET_COPY[preset].name));
+    marks.append(createMark(allowed, presets[preset].name));
   }
 
   summary.append(chevron, main, marks);
@@ -152,8 +156,8 @@ function buildToggleCol(
     fixedMark.className = 'category-fixed-mark';
     fixedMark.textContent = '✓';
     fixedMark.setAttribute('role', 'img');
-    fixedMark.title = '常に許可';
-    fixedMark.setAttribute('aria-label', `${row.copy.name}: 常に許可`);
+    fixedMark.title = essentialCopy().short;
+    fixedMark.setAttribute('aria-label', `${row.copy.name}: ${essentialCopy().short}`);
     col.append(fixedMark);
     return col;
   }
@@ -189,6 +193,6 @@ function createMark(allowed: boolean, presetName: string): HTMLElement {
   mark.className = `category-mark ${allowed ? 'category-mark-allow' : 'category-mark-deny'}`;
   mark.textContent = allowed ? '✓' : '—';
   mark.setAttribute('role', 'img');
-  mark.setAttribute('aria-label', `${presetName}: ${allowed ? '許可' : '拒否'}`);
+  mark.setAttribute('aria-label', `${presetName}: ${allowed ? t().common.allow : t().common.deny}`);
   return mark;
 }

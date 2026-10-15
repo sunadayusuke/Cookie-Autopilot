@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>fixture: Yes, I'm happy / Manage or reject cookies</title>
+    <script src="/content.js"></script>
+    <style>
+      body { margin: 0; font: 15px/1.8 system-ui, -apple-system, 'Hiragino Sans', sans-serif; }
+      main { padding: 24px; max-width: 720px; }
+      pre { background: #f3f4f6; padding: 12px; border-radius: 8px; min-height: 3em; }
+      .fx-cookie-bar {
+        position: fixed; left: 0; right: 0; bottom: 0; z-index: 10;
+        display: flex; gap: 16px; align-items: center; justify-content: space-between; flex-wrap: wrap;
+        padding: 16px 24px; background: #052962; color: #fff;
+      }
+      .fx-cookie-bar p { margin: 0; flex: 1 1 320px; }
+      .fx-actions { display: flex; gap: 12px; flex-wrap: wrap; }
+      .fx-actions button {
+        padding: 8px 16px; border: 1px solid #fff; border-radius: 999px;
+        font-size: 14px; cursor: pointer;
+      }
+      .fx-allow { background: #ffe500; color: #052962; }
+      .fx-manage { background: transparent; color: #fff; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Yes, I'm happy / Manage or reject cookies</h1>
+      <p>
+        theguardian.com の構成を写したもの。拒否ボタンが無く、「Manage or reject cookies」は
+        設定導線なので、reject モードでは「Yes, I'm happy」（同意）を押さずに非表示にします。
+      </p>
+      <p><code>?mode=accept</code> を付けると accept モードになります。</p>
+      <pre id="log"></pre>
+    </main>
+
+    <div class="fx-cookie-bar" id="fx-cookie-guardian">
+      <p>We use cookies to improve your experience on our site and to show you personalised advertising.</p>
+      <div class="fx-actions">
+        <button class="fx-allow">Yes, I’m happy</button>
+        <button class="fx-manage">Manage or reject cookies</button>
+      </div>
+    </div>
+
+    <script>
+      (function () {
+        var log = document.getElementById('log');
+        function record(text) {
+          log.textContent += '[' + new Date().toLocaleTimeString('ja-JP') + '] ' + text + '\n';
+        }
+        document.addEventListener(
+          'click',
+          function (event) {
+            var el = event.target.closest('button, a, [role="button"], input');
+            if (el) record('クリック: ' + (el.textContent || el.value || '').trim());
+          },
+          true,
+        );
+        var banner = document.getElementById('fx-cookie-guardian');
+        banner.querySelector('.fx-allow').addEventListener('click', function () {
+          record('バナーを閉じました');
+          banner.remove();
+        });
+      })();
+    </script>
+  </body>
+</html>

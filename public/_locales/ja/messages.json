@@ -1,0 +1,10 @@
+{
+  "extName": {
+    "message": "Cookie Autopilot",
+    "description": "Chrome とストアに出る拡張の名前。"
+  },
+  "extDescription": {
+    "message": "Cookie の同意画面に、あなたの代わりに答えます。断るボタンを自動で押し、見つからなければ同意画面を非表示にします。",
+    "description": "Chrome とストアに出る拡張の説明。"
+  }
+}

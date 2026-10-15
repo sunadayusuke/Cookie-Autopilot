@@ -14,6 +14,7 @@ import {
   isRejectMinimal,
   isRejectStrong,
   isSettingsButton,
+  isUnblockWord,
 } from '../shared/phrases';
 import type { CategoryKey } from '../shared/types';
 import { CATEGORY_KEYS } from '../shared/types';
@@ -539,8 +540,13 @@ function panelButtons(panel: Element, env: EngineEnv): ButtonCandidate[] {
   );
 }
 
-/** 拒否ボタン扱いにする文言か（拒否語・必要最小系・「すべてオフ」系） */
+/**
+ * 拒否ボタン扱いにする文言か（拒否語・必要最小系・「すべてオフ」系）。
+ * ブロック解除語（「ブロックをすべて解除」"Accept required service and unblock content"）は
+ * 押すと同意になるので、拒否語・必要最小系に当たってもここでも除く（scoreCandidates と同じ歯止め）
+ */
 function isPanelReject(text: string): boolean {
+  if (isUnblockWord(text)) return false;
   return isRejectStrong(text) || isRejectMinimal(text) || REJECT_ALL_TOGGLES.test(text);
 }
 

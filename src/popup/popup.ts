@@ -3,6 +3,7 @@
 // chrome API（storage / tabs）が無い環境（pnpm fixtures で配信される素の HTML）でも
 // 既定値で描画されるようにし、操作だけを無効化する。
 
+import type { Messages } from '../shared/i18n';
 import type {
   CategoryKey,
   SiteHistoryEntry,
@@ -12,7 +13,8 @@ import type {
   UnhandledReason,
 } from '../shared/types';
 import { CATEGORY_KEYS } from '../shared/types';
-import { CATEGORY_COPY, ESSENTIAL_COPY } from '../shared/copy';
+import { categoryCopy, essentialCopy } from '../shared/copy';
+import { applyDocumentLang, applyI18n, getLang, initLangCache, resolveLang, setLang, t } from '../shared/i18n';
 import {
   getSettings,
   getSiteHistoryEntry,
@@ -48,54 +50,35 @@ const STATUS_TIMEOUT_MS = 1500;
  * 状態バッジの文言（§14.4-1）。
  * ヘッダーではサイト名と並ぶので、状態が分かる最短の言い回しにする。
  * 詳しい説明は「このサイトでの結果」に任せる。
+ * loading は status が届く前、timeout はタブが読み込み済みなのに status が届かないとき、
+ * recorded は現在の結果が無く以前の対応記録があるとき（§14.8）。
  */
-const BADGE = {
-  handled: '✓ 処理しました',
-  unhandled: '見つかりませんでした',
-  none: '同意画面なし',
-  off: '無効',
-  /** 監視窓が開いている間（content からの watching / rerun 直後のローカル表示） */
-  watching: '確認中',
-  /** status が届く前 */
-  loading: '確認しています…',
-  /** タブは読み込み済みなのに status が届かない */
-  timeout: '同意画面なし',
-  unavailable: 'このページでは使えません',
-  /** 現在の結果が無く、以前の対応記録があるとき（§14.8） */
-  recorded: '✓ 対応済み',
-} as const;
+function badgeText(): Messages['popup']['badge'] {
+  return t().popup.badge;
+}
 /** 「このサイトでの結果」の説明文（バッジの言い換えではなく、何が起きたかを書く） */
-const RESULT_TEXT = {
-  watching: 'いまのところ Cookie の同意画面は出ていません。出てきたら自動で対応します。',
-  loading: '状態を確認しています…',
-  timeout: 'このページでは Cookie の同意画面は出ていません。',
-  off: 'このサイトでは動かさない設定です。',
-  none: 'このページでは Cookie の同意画面は出ていません。',
-  unhandled: '断るボタンが見つかりませんでした。',
-  /** decision が付かない handled（許可・閉じるボタンを押した CMP ルールなど） */
-  handled: 'サイトの同意画面を閉じました。',
-} as const;
+function resultText(): Messages['popup']['result'] {
+  return t().popup.result;
+}
 /**
  * unhandled の説明文（§14.4-2）。何が起きて処理できなかったのかで出し分ける。
- * 理由が付いていない（古い記録・打ち切りなど）ときは RESULT_TEXT.unhandled のまま。
+ * 理由が付いていない（古い記録・打ち切りなど）ときは resultText().unhandled のまま。
  */
-const UNHANDLED_TEXT: Record<UnhandledReason, string> = {
-  'no-candidates': '同意画面は見つかりましたが、押せるボタンを判別できませんでした。',
-  'no-reject': RESULT_TEXT.unhandled,
-  'panel-aborted': '設定画面を開きましたが、項目を判別できませんでした。',
-  'click-failed': 'ボタンを押しましたが、同意画面が閉じませんでした。',
-};
+function unhandledText(): Record<UnhandledReason, string> {
+  const messages = t().popup.unhandled;
+  return {
+    'no-candidates': messages.noCandidates,
+    'no-reject': t().popup.result.unhandled,
+    'panel-aborted': messages.panelAborted,
+    'click-failed': messages.clickFailed,
+  };
+}
 /** 拡張外プレビュー（pnpm fixtures）で見た目を確認するためのダミーのサイト名 */
 const PREVIEW_HOST = 'example.com';
-const PREVIEW_BADGE_TEXT = 'プレビュー';
 /** 「このサイトの設定」行に出す要約（§14.9） */
-const SITE_SUMMARY = {
-  inherit: '全体の設定と同じ',
-  custom: 'このサイトだけ調整中',
-  off: '動かさない',
-} as const;
-/** reject-all / custom の「拒否」チップは個別のカテゴリ名を並べず、1 つにまとめる（§14.4） */
-const DENY_REST_LABEL = 'それ以外すべて';
+function siteSummaryText(): Messages['popup']['siteSummary'] {
+  return t().popup.siteSummary;
+}
 
 interface ActiveTab {
   id: number;
@@ -167,10 +150,20 @@ let unsubscribe: (() => void) | null = null;
 void main();
 
 async function main(): Promise<void> {
+  // storage を待つ間に別の言語で描画されないよう、まずキャッシュの言語で描く（§14.10）
+  initLangCache();
+  renderLang();
+
   const extensionAvailable = hasChromeStorage() && hasChromeTabs();
   if (!extensionAvailable) els.extensionNotice.hidden = false;
 
   const [overrides, settings] = await Promise.all([getSiteOverrides(), getSettings()]);
+  // 正は保存値。キャッシュと食い違っていたらここで描き直す（動的な部品はこのあと組み立てる）
+  const lang = resolveLang(settings.lang);
+  if (lang !== getLang()) {
+    setLang(lang);
+    renderLang();
+  }
   globalAllow = settings.allowCategories;
   renderOnboardingNotice(settings.onboarded);
   bindOnboardingNotice();
@@ -183,7 +176,7 @@ async function main(): Promise<void> {
     els.siteName.textContent = PREVIEW_HOST;
     override = overrides[PREVIEW_HOST] ?? null;
     renderSiteOverride();
-    renderBadge(PREVIEW_BADGE_TEXT, 'neutral');
+    renderBadge(t().popup.previewBadge, 'neutral');
     renderResult(null);
     // プレビューでも詳細画面を確認できるよう、画面の行き来だけは有効に戻す
     els.siteSettingsBtn.disabled = false;
@@ -214,15 +207,41 @@ async function main(): Promise<void> {
 
   unsubscribe = onStorageChanged((area, keys) => {
     if (area === 'session' && activeTab && keys.includes(`tab:${activeTab.id}`)) void refreshStatus();
-    if (area === 'sync' && keys.includes('siteOverrides')) void refreshOverrideFromStorage();
+    if (area !== 'sync') return;
+    // options / onboarding で言語を切り替えたら、開いたままの popup も追従する（§14.10）
+    if (keys.includes('settings')) void refreshLangFromStorage();
+    if (keys.includes('siteOverrides')) void refreshOverrideFromStorage();
   });
   window.addEventListener('pagehide', () => unsubscribe?.(), { once: true });
+}
+
+/** 静的な文言（HTML の data-i18n）と <html lang> を現在の言語で描き直す */
+function renderLang(): void {
+  applyDocumentLang();
+  applyI18n();
+  document.title = t().popup.title;
+}
+
+/**
+ * 他の画面で言語が変わったときの追従（§14.10）。
+ * 言語が同じなら何もしないので、settings の他の変更で描き直しが走ることはない。
+ * 動的に組んだ部品（詳細画面のカテゴリ行・結果のチップ）は作り直す。
+ */
+async function refreshLangFromStorage(): Promise<void> {
+  const settings = await getSettings();
+  const lang = resolveLang(settings.lang);
+  if (lang === getLang()) return;
+  setLang(lang);
+  renderLang();
+  buildSiteDetail();
+  renderSiteOverride();
+  renderStatus();
 }
 
 /** 非対応ページ: このサイトでの結果・このサイトの設定・フッターの操作ボタンを隠す */
 function showTabUnavailable(): void {
   els.siteName.hidden = true;
-  renderBadge(BADGE.unavailable, 'neutral');
+  renderBadge(badgeText().unavailable, 'neutral');
   els.resultSection.hidden = true;
   els.siteSection.hidden = true;
   els.actionButtons.hidden = true;
@@ -307,27 +326,27 @@ function hasCurrentResult(status: TabStatus | null): boolean {
 function statusDisplay(status: TabStatus | null): StatusDisplay {
   // none / watching / タイムアウト / 読み込み中で以前の記録があれば、それを優先して表示する（§14.8）
   if (!hasCurrentResult(status) && historyEntry) {
-    return { badge: BADGE.recorded, tone: 'success', result: historyResult(historyEntry).message };
+    return { badge: badgeText().recorded, tone: 'success', result: historyResult(historyEntry).message };
   }
   if (!status) {
     // 再実行を頼んだ直後。直前が handled のタブでは service worker が watching を
     // 保存しないので、結果が届くまでは popup 側で「確認中」を出す（M-3）
-    if (rerunAt !== null) return { badge: BADGE.watching, tone: 'neutral', result: RESULT_TEXT.watching };
-    if (statusTimedOut) return { badge: BADGE.timeout, tone: 'neutral', result: RESULT_TEXT.timeout };
-    return { badge: BADGE.loading, tone: 'neutral', result: RESULT_TEXT.loading };
+    if (rerunAt !== null) return { badge: badgeText().watching, tone: 'neutral', result: resultText().watching };
+    if (statusTimedOut) return { badge: badgeText().timeout, tone: 'neutral', result: resultText().timeout };
+    return { badge: badgeText().loading, tone: 'neutral', result: resultText().loading };
   }
   switch (status.status) {
     // 監視窓が開いている間。結果が出るまでの経過なのでタイムアウト扱いにしない
     case 'watching':
-      return { badge: BADGE.watching, tone: 'neutral', result: RESULT_TEXT.watching };
+      return { badge: badgeText().watching, tone: 'neutral', result: resultText().watching };
     case 'off':
-      return { badge: BADGE.off, tone: 'neutral', result: RESULT_TEXT.off };
+      return { badge: badgeText().off, tone: 'neutral', result: resultText().off };
     case 'none':
-      return { badge: BADGE.none, tone: 'neutral', result: RESULT_TEXT.none };
+      return { badge: badgeText().none, tone: 'neutral', result: resultText().none };
     case 'unhandled':
-      return { badge: BADGE.unhandled, tone: 'warning', result: unhandledResult(status) };
+      return { badge: badgeText().unhandled, tone: 'warning', result: unhandledResult(status) };
     case 'handled':
-      return { badge: BADGE.handled, tone: 'success', result: RESULT_TEXT.handled };
+      return { badge: badgeText().handled, tone: 'success', result: resultText().handled };
     default:
       return { badge: '', tone: 'neutral', result: '' };
   }
@@ -336,7 +355,7 @@ function statusDisplay(status: TabStatus | null): StatusDisplay {
 /** unhandled の説明文。理由が無い・知らない値なら従来の文言にする（§14.4-2） */
 function unhandledResult(status: TabStatus): string {
   const reason = status.reason;
-  return (reason ? UNHANDLED_TEXT[reason] : undefined) ?? RESULT_TEXT.unhandled;
+  return (reason ? unhandledText()[reason] : undefined) ?? resultText().unhandled;
 }
 
 function renderBadge(text: string, tone: StatusTone): void {
@@ -388,7 +407,7 @@ function renderResult(status: TabStatus | null): void {
     if (decided.message) message = decided.message;
     chips = decided.chips;
   } else if (status?.status === 'unhandled') {
-    hint = '下の『断るボタンを教える』で登録できます';
+    hint = t().popup.teachHint;
   } else if (!hasCurrentResult(status) && historyEntry) {
     // none / watching / タイムアウト / 読み込み中で以前の記録があれば、それを優先して表示する（§14.8）
     const decided = historyResult(historyEntry);
@@ -410,35 +429,40 @@ function clickedLabel(status: TabStatus): string {
 
 function handledResult(status: TabStatus): { message?: string; chips: ResultChips | null } {
   const label = clickedLabel(status);
+  const copy = t().popup;
   switch (status.decision) {
-    case 'granular': {
-      const allowed = new Set(status.allowed ?? []);
-      return {
-        message: 'サイトの選択画面で選びました',
-        chips: {
-          allow: [ESSENTIAL_COPY.name, ...CATEGORY_KEYS.filter((key) => allowed.has(key)).map((key) => CATEGORY_COPY[key].name)],
-          deny: CATEGORY_KEYS.filter((key) => !allowed.has(key)).map((key) => CATEGORY_COPY[key].name),
-        },
-      };
-    }
+    case 'granular':
+      return { message: copy.granular, chips: categoryChips(status.allowed ?? []) };
     // 文言の取れないボタン（アイコンだけ）でも、チップと食い違わない文にする
     case 'reject-all':
-      return {
-        message: label ? `『${label}』を押しました` : '断るボタンを押しました',
-        chips: { allow: [ESSENTIAL_COPY.name], deny: [DENY_REST_LABEL] },
-      };
+      return { message: label ? copy.pressed(label) : copy.pressedReject, chips: rejectRestChips() };
     case 'custom':
       return {
-        message: label ? `教えたボタン『${label}』を押しました` : '教えたボタンを押しました',
-        chips: { allow: [ESSENTIAL_COPY.name], deny: [DENY_REST_LABEL] },
+        message: label ? copy.pressedCustom(label) : copy.pressedCustomNoLabel,
+        chips: rejectRestChips(),
       };
     case 'dismissed':
-      return { message: '選択肢のないお知らせを閉じました。このサイトは Cookie を使います', chips: null };
+      return { message: copy.dismissed, chips: null };
     case 'hidden':
-      return { message: '同意画面を非表示にしました。何も許可していません', chips: null };
+      return { message: copy.hidden, chips: null };
     default:
       return { chips: null };
   }
+}
+
+/** granular のチップ: 許可した項目（「必要なもの」は常に許可なので先頭に固定）と、それ以外 */
+function categoryChips(allowed: readonly CategoryKey[]): ResultChips {
+  const allowedSet = new Set(allowed);
+  const categories = categoryCopy();
+  return {
+    allow: [essentialCopy().name, ...CATEGORY_KEYS.filter((key) => allowedSet.has(key)).map((key) => categories[key].name)],
+    deny: CATEGORY_KEYS.filter((key) => !allowedSet.has(key)).map((key) => categories[key].name),
+  };
+}
+
+/** 断る系のチップ: 個別のカテゴリ名は並べず「それ以外すべて」にまとめる（§14.4） */
+function rejectRestChips(): ResultChips {
+  return { allow: [essentialCopy().name], deny: [t().popup.denyRest] };
 }
 
 /** 「<日付>」の日付部分。年が違うときだけ年も付ける（§14.8） */
@@ -448,29 +472,21 @@ function formatHistoryDate(at: number): string {
   const options: Intl.DateTimeFormatOptions = sameYear
     ? { month: 'long', day: 'numeric' }
     : { year: 'numeric', month: 'long', day: 'numeric' };
-  return new Intl.DateTimeFormat('ja-JP', options).format(date);
+  return new Intl.DateTimeFormat(getLang() === 'ja' ? 'ja-JP' : 'en-US', options).format(date);
 }
 
 /** 以前の対応記録から「このサイトでの結果」を組み立てる（§14.8。handledResult の記録版） */
 function historyResult(entry: SiteHistoryEntry): { message: string; chips: ResultChips | null } {
   const date = formatHistoryDate(entry.at);
-  const answered = `${date}にこのサイトの同意画面に答えたので、今回は出ていません。`;
+  const answered = t().popup.historyAnswered(date);
   switch (entry.decision) {
-    case 'granular': {
-      const allowed = new Set(entry.allowed ?? []);
-      return {
-        message: answered,
-        chips: {
-          allow: [ESSENTIAL_COPY.name, ...CATEGORY_KEYS.filter((key) => allowed.has(key)).map((key) => CATEGORY_COPY[key].name)],
-          deny: CATEGORY_KEYS.filter((key) => !allowed.has(key)).map((key) => CATEGORY_COPY[key].name),
-        },
-      };
-    }
+    case 'granular':
+      return { message: answered, chips: categoryChips(entry.allowed ?? []) };
     case 'reject-all':
     case 'custom':
-      return { message: answered, chips: { allow: [ESSENTIAL_COPY.name], deny: [DENY_REST_LABEL] } };
+      return { message: answered, chips: rejectRestChips() };
     case 'dismissed':
-      return { message: `${date}に同意画面を閉じました。今回は出ていません。`, chips: null };
+      return { message: t().popup.historyDismissed(date), chips: null };
     default:
       return { message: answered, chips: null };
   }
@@ -508,7 +524,7 @@ let hudFinalizeTimer: number | null = null;
 
 function showHudError(error: unknown): void {
   const reason = error instanceof Error ? error.message : String(error);
-  showHud(`保存できませんでした: ${reason}`);
+  showHud(t().common.saveFailed(reason));
 }
 
 function showHud(message: string): void {
@@ -553,13 +569,16 @@ function queueSiteSave(save: () => Promise<SiteOverrides>): Promise<SiteOverride
   return next;
 }
 
-/** 詳細画面のカテゴリ行を組み立てる（トグルの状態は renderSiteOverride が入れる） */
+/**
+ * 詳細画面のカテゴリ行を組み立てる（トグルの状態は renderSiteOverride が入れる）。
+ * 言語の切り替えで作り直すので、要素が二重に並ばないよう replaceChildren で入れ替える。
+ */
 function buildSiteDetail(): void {
   categoryToggles = createCategoryToggles({
     allow: globalAllow,
     onToggle: (key, on) => void onCategoryToggle(key, on),
   });
-  els.siteCategorySlot.append(categoryToggles.element);
+  els.siteCategorySlot.replaceChildren(categoryToggles.element);
 }
 
 function bindSiteDetailEvents(): void {
@@ -594,7 +613,7 @@ function effectiveAllow(): Record<CategoryKey, boolean> {
 /** 行の要約・詳細画面のトグル・「全体の設定に戻す」の活性を、いまの override に合わせる */
 function renderSiteOverride(): void {
   els.siteSettingsSummary.textContent =
-    override === null ? SITE_SUMMARY.inherit : override.kind === 'off' ? SITE_SUMMARY.off : SITE_SUMMARY.custom;
+    override === null ? siteSummaryText().inherit : override.kind === 'off' ? siteSummaryText().off : siteSummaryText().custom;
   els.siteDetailHost.textContent = host;
 
   const off = override?.kind === 'off';

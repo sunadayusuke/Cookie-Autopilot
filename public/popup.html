@@ -16,32 +16,32 @@
   </head>
   <body>
     <main class="popup">
-      <p id="extension-notice" class="notice" hidden>
+      <p id="extension-notice" class="notice" data-i18n="common.extensionNotice" hidden>
         拡張として読み込むと有効になります。ここでは見た目だけ確認できます。
       </p>
 
       <div id="onboarding-notice" class="notice notice-action" hidden>
-        <span>最初の設定がまだです</span>
-        <button type="button" id="onboarding-btn" class="btn btn-primary btn-sm">設定する</button>
+        <span data-i18n="popup.onboardingNotice">最初の設定がまだです</span>
+        <button type="button" id="onboarding-btn" class="btn btn-primary btn-sm" data-i18n="popup.onboardingBtn">設定する</button>
       </div>
 
       <div id="popup-body" class="popup-body">
         <header class="popup-header">
           <h1 id="site-name" class="site-name">&nbsp;</h1>
-          <span id="status-badge" class="badge badge-neutral" role="status" aria-live="polite">確認しています…</span>
+          <span id="status-badge" class="badge badge-neutral" role="status" aria-live="polite" data-i18n="popup.badge.loading">確認しています…</span>
         </header>
 
         <section id="result-section" class="panel-section panel-section-border">
-          <h2 class="section-title">このサイトでの結果</h2>
+          <h2 class="section-title" data-i18n="popup.resultTitle">このサイトでの結果</h2>
           <p id="result-message" class="result-message"></p>
           <p id="result-hint" class="result-hint" hidden></p>
           <div id="result-chips" class="result-chips" hidden>
             <div class="result-chip-group">
-              <span class="result-chip-label">許可</span>
+              <span class="result-chip-label" data-i18n="common.allow">許可</span>
               <div id="result-allow-chips" class="chip-row"></div>
             </div>
             <div class="result-chip-group">
-              <span class="result-chip-label">拒否</span>
+              <span class="result-chip-label" data-i18n="common.deny">拒否</span>
               <div id="result-deny-chips" class="chip-row"></div>
             </div>
           </div>
@@ -56,7 +56,7 @@
             aria-expanded="false"
             aria-controls="site-detail"
           >
-            <span class="control-row-label">このサイトの設定</span>
+            <span class="control-row-label" data-i18n="popup.siteSettings">このサイトの設定</span>
             <span id="site-settings-summary" class="row-button-summary"></span>
             <span class="row-button-chevron" aria-hidden="true">›</span>
           </button>
@@ -66,23 +66,31 @@
       <!-- このサイトの設定（詳細。§14.9）。開いている間はメインの内容を隠す -->
       <section id="site-detail" class="site-detail" aria-labelledby="site-detail-title" hidden>
         <header class="site-detail-header">
-          <button type="button" id="site-detail-back" class="btn btn-ghost btn-sm site-detail-back">← 戻る</button>
-          <h2 id="site-detail-title" class="site-detail-title">このサイトの設定</h2>
+          <button type="button" id="site-detail-back" class="btn btn-ghost btn-sm site-detail-back" data-i18n="popup.back">← 戻る</button>
+          <h2 id="site-detail-title" class="site-detail-title" data-i18n="popup.siteSettings">このサイトの設定</h2>
           <p id="site-detail-host" class="site-detail-host"></p>
         </header>
 
         <div id="site-category-slot"></div>
 
         <div class="site-detail-off">
-          <span class="site-detail-off-label">このサイトでは動かさない</span>
-          <button type="button" id="site-off-toggle" class="toggle" role="switch" aria-checked="false" aria-label="このサイトでは動かさない">
+          <span class="site-detail-off-label" data-i18n="popup.siteOff">このサイトでは動かさない</span>
+          <button
+            type="button"
+            id="site-off-toggle"
+            class="toggle"
+            role="switch"
+            aria-checked="false"
+            aria-label="このサイトでは動かさない"
+            data-i18n-aria-label="popup.siteOff"
+          >
             <span class="toggle-thumb"></span>
           </button>
         </div>
 
         <div class="site-detail-footer">
-          <button type="button" id="site-reset" class="btn btn-outline site-detail-reset">全体の設定に戻す</button>
-          <p class="site-detail-note">変えた内容はこのサイトだけに効きます。</p>
+          <button type="button" id="site-reset" class="btn btn-outline site-detail-reset" data-i18n="popup.resetToGlobal">全体の設定に戻す</button>
+          <p class="site-detail-note" data-i18n="popup.siteDetailNote">変えた内容はこのサイトだけに効きます。</p>
         </div>
       </section>
 
@@ -90,10 +98,10 @@
 
       <footer id="popup-footer" class="popup-footer">
         <div id="action-buttons" class="footer-actions">
-          <button type="button" id="teach-reject" class="push-btn push-btn-dark">断るボタンを教える</button>
-          <button type="button" id="rerun" class="btn btn-ghost btn-sm footer-rerun">このページで再実行</button>
+          <button type="button" id="teach-reject" class="push-btn push-btn-dark" data-i18n="popup.teachReject">断るボタンを教える</button>
+          <button type="button" id="rerun" class="btn btn-ghost btn-sm footer-rerun" data-i18n="popup.rerun">このページで再実行</button>
         </div>
-        <a href="options.html" id="options-link" class="footer-link" target="_blank" rel="noreferrer">詳細設定 →</a>
+        <a href="options.html" id="options-link" class="footer-link" target="_blank" rel="noreferrer" data-i18n="popup.optionsLink">詳細設定 →</a>
       </footer>
     </main>
     <script src="popup.js"></script>
