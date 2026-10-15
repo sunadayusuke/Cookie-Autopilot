@@ -200,3 +200,12 @@ v1.0.0 は公開済み。UI の日英 2 言語対応を含む **v1.1.0** をこ�
 - 変更内容: 英語バナーの語彙の拡充（"Continue with necessary cookies" "Block all cookies" など）、Cookie を名乗る埋め込みのプレースホルダ（動画の「Unblock」）が本物のバナーより先に処理されて拒否ボタンまで届かなかった不具合の修正、ソフトハイフン等の不可視文字や "Accept required service and unblock content" のような文言で「Unblock」（押すと同意になる）を拒否ボタンと誤認しうる経路の修正
 - `pnpm build && pnpm package` で `release/cookie-autopilot-v1.1.1.zip` を作成
 - 権限（storage / activeTab / alarms / ホストへのアクセス）・リモートコードの扱い・データ利用の申告は v1.1.0 から変更なし。掲載文の変更も不要
+
+## 更新（2026-10-15）
+
+不具合修正の **v1.1.2** のパッケージを作成する。
+
+- `public/manifest.json` / `package.json` の version を `1.1.1` → `1.1.2` に更新（提出済みのバージョンと同じ番号は再アップロードできないため）
+- 変更内容: お問い合わせフォームの「個人情報の取扱いについて」のような、Cookie に触れる説明文の中の外部リンク（「オプトアウト（無効化）」など、別サイトへ新しいタブで開くリンク）を拒否ボタンと誤認して押してしまう不具合の修正。リンクで作られた決定ボタンは、同じオリジンへ同じタブで遷移するものだけを押す
+- `pnpm build && pnpm package` で `release/cookie-autopilot-v1.1.2.zip` を作成
+- 権限（storage / activeTab / alarms / ホストへのアクセス）・リモートコードの扱い・データ利用の申告は v1.1.1 から変更なし。掲載文の変更も不要
