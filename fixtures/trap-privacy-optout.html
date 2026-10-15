@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <title>fixture: 誤クリック防止（お問い合わせフォームの個人情報の取扱いにある外部オプトアウトリンク）</title>
+    <script src="/content.js"></script>
+    <style>
+      body { margin: 0; font: 15px/1.8 system-ui, -apple-system, 'Hiragino Sans', sans-serif; }
+      .fx-note { padding: 24px; max-width: 720px; }
+      pre { background: #f3f4f6; padding: 12px; border-radius: 8px; min-height: 3em; }
+      .contact { padding: 0 24px 24px; max-width: 720px; }
+      .contact_consent__a1b2c { margin-top: 16px; }
+      .contact_privacy__d3e4f {
+        height: 160px; overflow-y: auto; padding: 12px 16px;
+        border: 1px solid #d1d5db; border-radius: 8px; background: #f9fafb; font-size: 13px;
+      }
+      .contact_privacy__d3e4f h3 { margin: 12px 0 4px; font-size: 14px; }
+      .contact_agree__g5h6i { margin-top: 16px; }
+      .contact_required__j7k8l {
+        display: inline-block; margin-right: 8px; padding: 0 8px; border-radius: 4px;
+        background: #dc2626; color: #fff; font-size: 12px;
+      }
+      .contact_submit__m9n0o { margin-top: 24px; }
+      button { padding: 10px 24px; border: 0; border-radius: 8px; background: #2563eb; color: #fff; font-size: 14px; cursor: pointer; }
+    </style>
+  </head>
+  <body>
+    <div class="fx-note">
+      <h1>誤クリック防止（お問い合わせフォームの個人情報の取扱いにある外部オプトアウトリンク）</h1>
+      <p>
+        CSS Modules 風の class（<code>contact_consent__a1b2c</code>）を持つ外側の div が、
+        汎用ヒント <code>consent</code> で容器候補になります。中身は「個人情報の取扱い」の
+        スクロール枠と同意チェックボックスで、本文に「Cookie（クッキー）等の技術を利用して…」があるため
+        <code>cookieSpecific</code> になります。送信ボタンはこの div の外にあります。
+        スクロール枠の中の <strong>別オリジンへ新しいタブで開く</strong>「オプトアウト（無効化）」リンクが
+        拒否の強一致（オプトアウト）として押され、Google のオプトアウトページが開いていました。
+        reject / accept のどちらでも<strong>何も押さない・消さない</strong>のが正解です。
+      </p>
+      <p><code>?mode=accept</code> を付けると accept モードになります。</p>
+      <pre id="log"></pre>
+    </div>
+
+    <form class="contact" onsubmit="return false">
+      <h2>お問い合わせ</h2>
+      <p>サンプル株式会社へのお問い合わせは、下記の内容をご確認のうえ送信してください。</p>
+
+      <div class="contact_consent__a1b2c" id="fx-contact-consent">
+        <div class="contact_privacy__d3e4f" id="fx-privacy-scroll">
+          <h3>個人情報の取扱いについて</h3>
+          <p>
+            サンプル株式会社（以下「当社」）は、お問い合わせいただいた個人情報を、
+            お問い合わせへの回答の目的にのみ利用します。
+          </p>
+          <h3>Cookie（クッキー）等の技術の利用について</h3>
+          <p>
+            当社のウェブサイトでは、利用状況の把握と改善のため、Cookie（クッキー）等の技術を利用して
+            アクセス解析ツールを使用しています。
+          </p>
+          <ul>
+            <li>
+              Google アナリティクス：
+              <a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer">プライバシーポリシー</a> /
+              <a href="https://tools.google.com/dlpage/gaoptout" target="_blank" rel="noopener noreferrer">オプトアウト（無効化）</a>
+            </li>
+            <li>
+              Microsoft Clarity：
+              <a href="https://privacy.microsoft.com/ja-jp/privacystatement" target="_blank" rel="noopener noreferrer">プライバシーステートメント</a> /
+              <a href="https://optout.aboutads.info/" target="_blank" rel="noopener noreferrer">オプトアウト（無効化）</a>
+            </li>
+          </ul>
+          <p>上記の取扱いについて、ご同意のうえお問い合わせください。</p>
+        </div>
+
+        <div class="contact_agree__g5h6i">
+          <span class="contact_required__j7k8l">必須</span>
+          <span>個人情報の取扱いに同意のうえ、送信してください。</span>
+          <div>
+            <label><input type="checkbox" name="agree" />同意する</label>
+          </div>
+        </div>
+      </div>
+
+      <div class="contact_submit__m9n0o">
+        <button type="submit">送信内容を確認する</button>
+      </div>
+    </form>
+
+    <script>
+      (function () {
+        var log = document.getElementById('log');
+        function record(text) {
+          log.textContent += '[' + new Date().toLocaleTimeString('ja-JP') + '] ' + text + '\n';
+        }
+        // リンクは capture で止める（実際に別タブへ飛ばさない）。押されたかどうかだけ記録する
+        document.addEventListener(
+          'click',
+          function (event) {
+            var el = event.target.closest('button, a, [role="button"], input');
+            if (!el) return;
+            if (el.tagName === 'A') event.preventDefault();
+            record('クリック（本来は起きないはず）: ' + (el.textContent || el.value || '').trim());
+          },
+          true,
+        );
+        record('待機中。何もクリックされなければ成功です。');
+      })();
+    </script>
+  </body>
+</html>

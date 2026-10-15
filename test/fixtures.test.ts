@@ -50,6 +50,7 @@ import trapChatHtml from '../fixtures/trap-chat.html?raw';
 import trapCustomElementHtml from '../fixtures/trap-custom-element.html?raw';
 import trapNewsletterEnHtml from '../fixtures/trap-newsletter-en.html?raw';
 import trapPanelHtml from '../fixtures/trap-panel.html?raw';
+import trapPrivacyOptoutHtml from '../fixtures/trap-privacy-optout.html?raw';
 import trapTosEnHtml from '../fixtures/trap-tos-en.html?raw';
 import trapHtml from '../fixtures/trap.html?raw';
 import trustarcIbmHtml from '../fixtures/trustarc-ibm.html?raw';
@@ -115,6 +116,7 @@ const FIXTURE_HTML: Record<string, string> = {
   'trap-custom-element.html': trapCustomElementHtml,
   'trap-newsletter-en.html': trapNewsletterEnHtml,
   'trap-panel.html': trapPanelHtml,
+  'trap-privacy-optout.html': trapPrivacyOptoutHtml,
   'trap-tos-en.html': trapTosEnHtml,
   'trap.html': trapHtml,
   'trustarc-ibm.html': trustarcIbmHtml,
@@ -1129,6 +1131,28 @@ describe('fixtures（祖先の本文にだけ Cookie 語がある div soup。202
       for (const id of traps) {
         expect((doc.getElementById(id) as HTMLElement).style.display, `${mode} ${id}`).toBe('');
       }
+      expect(doc.querySelectorAll('[data-cookie-autopilot-cloak]'), mode).toHaveLength(0);
+      expect(doc.querySelectorAll('[data-cookie-autopilot-hidden]'), mode).toHaveLength(0);
+    }
+  });
+});
+
+describe('fixtures（個人情報の取扱いの中の外部オプトアウトリンク。実リンクの緩和④）', () => {
+  /**
+   * お問い合わせフォームの `contact_consent__xxxx`（汎用ヒント consent）が容器候補になり、
+   * 本文の「Cookie（クッキー）等の技術」で cookieSpecific になる。その中の
+   * 「オプトアウト（無効化）」は別オリジンへ新しいタブで開く実リンクで、押してもこのサイトの
+   * 同意状態は変わらない（Google のオプトアウトページが開くだけ）。実リンクの緩和は
+   * 同じオリジンへ同じタブで遷移するリンクに限る（§5-5-d）。
+   */
+  it('trap-privacy-optout: オプトアウトのリンクを押さず・同意枠も消さない（reject / accept どちらでも）', async () => {
+    for (const mode of ['reject', 'accept'] as const) {
+      const { outcome, log, doc, state } = await runFixture('trap-privacy-optout.html', mode);
+      expect(outcome, mode).toBeNull();
+      expect(state.detectedAny, mode).toBe(false);
+      expect(log, mode).not.toContain('本来は起きないはず');
+      expect((doc.getElementById('fx-contact-consent') as HTMLElement).style.display, mode).toBe('');
+      expect((doc.getElementById('fx-privacy-scroll') as HTMLElement).style.display, mode).toBe('');
       expect(doc.querySelectorAll('[data-cookie-autopilot-cloak]'), mode).toHaveLength(0);
       expect(doc.querySelectorAll('[data-cookie-autopilot-hidden]'), mode).toHaveLength(0);
     }

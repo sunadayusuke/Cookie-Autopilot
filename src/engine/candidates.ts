@@ -409,19 +409,64 @@ export function navigatesAway(el: Element): boolean {
 }
 
 /**
- * 実ページへのリンクでも候補にしてよい文言か（§5-5-d）。
+ * 実リンクの遷移先が「同じ文書のオリジンへ、同じタブで遷移する」ものか。
+ * 別オリジンのリンクや新しいタブで開くリンク（`target="_blank"`・名前付きウィンドウ）は、
+ * 押してもこのサイトの同意状態を変えられず、誤クリックにしかならない。
+ * 次はいずれも安全側（遷移先を確かめられない）で偽にする:
+ * - 解決できない href
+ * - オリジンが opaque（`'null'`。sandbox 付き iframe・data: 文書。opaque 同士は文字列として一致してしまう）
+ * - `_top` / `_parent` を iframe の中で使うもの（外側のタブごと別のページへ遷移しうる）
+ * `target` 属性が無い `a` は文書の `<base target>` が既定になる（HTML 仕様。属性があれば空文字でも優先）。
+ */
+function navigatesWithinSameTab(link: Element): boolean {
+  const doc = link.ownerDocument;
+  const attr = link.getAttribute('target');
+  const target = (attr ?? doc.querySelector('base[target]')?.getAttribute('target') ?? '')
+    .trim()
+    .toLowerCase();
+  try {
+    const win = doc.defaultView;
+    if (win === null) return false;
+    if (target === '_top') {
+      if (win.top !== win) return false;
+    } else if (target === '_parent') {
+      if (win.parent !== win) return false;
+    } else if (target !== '' && target !== '_self') {
+      return false;
+    }
+    const url = new URL(link.getAttribute('href') ?? '', doc.baseURI);
+    // 文書の実オリジン。sandbox が無い about:srcdoc の iframe は doc.URL がオリジンを持たないので location から取る
+    const origin = win.location.origin;
+    if (origin === 'null' || url.origin === 'null') return false;
+    return url.origin === origin;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * 実ページへのリンクでも候補にしてよいか（§5-5-d）。
  * 決定ボタンをリンクで作っているサイト（`<a href="/consent/all">全てに同意</a>`）があり、
  * 一律に外すと候補が 1 つも集まらず、hide の条件（押さずに残した許可ボタンがある）すら
  * 満たせない。遷移という副作用を負う以上、条件は厳しくする:
  * ① 容器に Cookie 固有語がある ② 文言が強い決定語（拒否の強一致・必要最小系・
- * 許可の specific 一致）③ HARD 禁止語でない。
+ * 許可の specific 一致）③ HARD 禁止語でない ④ 同じ文書のオリジンへ同じタブで遷移する
+ * （`<base target>`・iframe 内の `_top` / `_parent`・opaque オリジンの扱いは navigatesWithinSameTab）。
  * 弱一致・閉じる語・非決定語は対象外なので、「プライバシーポリシー」「インプリント」
  * 「詳細」のような情報リンクは従来どおり候補にならない。
+ * ④は、個人情報の取扱い欄に載った外部の「オプトアウト（無効化）」（Google アナリティクス等へ
+ * `target="_blank"`）が拒否の強一致として押されてしまう誤クリックを防ぐ。`link` は
+ * realLinkOf() が返した `a`（候補が `a` の中の要素のときも `a` 側の href / target を見る）。
  */
-function allowsRealLink(text: string, context: CandidateContext | undefined): boolean {
+function allowsRealLink(
+  link: Element,
+  text: string,
+  context: CandidateContext | undefined,
+): boolean {
   if (context?.cookieSpecific !== true) return false;
   if (text === '' || isForbiddenHard(text)) return false;
-  return isRejectStrong(text) || isRejectMinimal(text) || isAcceptStrongSpecific(text);
+  if (!isRejectStrong(text) && !isRejectMinimal(text) && !isAcceptStrongSpecific(text)) return false;
+  return navigatesWithinSameTab(link);
 }
 
 /**
@@ -464,7 +509,7 @@ export function collectButtons(
     if (isLoose && !isLooseText(text, context?.ageGate === true)) continue;
     const link = realLinkOf(el);
     if (link !== null) {
-      if (!allowsRealLink(text, context)) continue;
+      if (!allowsRealLink(link, text, context)) continue;
       // a 自身を候補にできたなら、その中の要素は同じボタンなので重ねて候補にしない
       // （押す先は結局 a なのに、候補の枠（最大 3）を二重に使ってしまう）
       if (link !== el && out.some((button) => button.el === link)) continue;
