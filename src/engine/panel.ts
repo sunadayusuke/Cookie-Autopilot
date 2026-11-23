@@ -19,7 +19,7 @@ import {
 import type { CategoryKey } from '../shared/types';
 import { CATEGORY_KEYS } from '../shared/types';
 import type { ButtonCandidate, ScoredCandidate } from './candidates';
-import { collectButtons, navigatesAway } from './candidates';
+import { collectButtons, isDialogLike, navigatesAway } from './candidates';
 import { deepQueryAll } from './deepQuery';
 import type { DetectedContainer } from './detect';
 import { MIN_HEIGHT, MIN_WIDTH, containsDeep, findContainers, wrapsPageStructure } from './detect';
@@ -130,7 +130,7 @@ const CATEGORY_PATTERNS: readonly (readonly [CategoryKey, RegExp])[] = [
  * （唯一の例外は下の PANEL_SUBMIT_WORDS）。
  */
 export const SAVE_WORDS =
-  /選択を保存|設定を保存|設定の保存|選択の保存|選んだ設定を保存|この設定で保存|保存する|保存して閉じる|選択を許可|選択した.*を許可|選択を確定|確定|適用|save|apply|confirm|allow\s*selection|save\s*(?:and|&)\s*(?:close|exit)|選択を反映/i;
+  /選択を保存|設定を保存|設定の保存|選択の保存|選んだ設定を保存|この設定で保存|保存する|保存して閉じる|選択を許可|選択した.*を許可|選択を確定|確定|適用|save|apply|confirm|(?:allow|accept)\s*(?:the\s*|my\s*)?(?:selection|selected|choices)|(?:continue|proceed)\s*with\s*(?:my\s*|the\s*)?(?:selection|selected|choices)|save\s*(?:and|&)\s*(?:close|exit)|選択を反映/i;
 
 /**
  * 「設定を送信する」型の保存ボタン。**この層に限り** HARD 禁止語（`submit` / `送信`）の
@@ -600,7 +600,7 @@ function isPanelContainer(el: Element, containers: ReadonlySet<Element>, env: En
   if (containers.has(el)) return true;
   const rect = env.getRect(el);
   if (rect.width * rect.height < MIN_PANEL_AREA) return false;
-  if (el.getAttribute('role') === 'dialog' || el.getAttribute('aria-modal') === 'true') return true;
+  if (isDialogLike(el)) return true;
   return env.getPosition(el) === 'fixed';
 }
 

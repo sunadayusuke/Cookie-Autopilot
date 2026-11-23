@@ -14,6 +14,8 @@ import dailymotionLikeHtml from '../fixtures/dailymotion-like.html?raw';
 import dialogTosConsentClassHtml from '../fixtures/dialog-tos-consent-class.html?raw';
 import dialogTosFixedHtml from '../fixtures/dialog-tos-fixed.html?raw';
 import dialogTosHtml from '../fixtures/dialog-tos.html?raw';
+import enAckNoticeHtml from '../fixtures/en-ack-notice.html?raw';
+import enAlertdialogDisallowHtml from '../fixtures/en-alertdialog-disallow.html?raw';
 import enBlockAllHtml from '../fixtures/en-block-all.html?raw';
 import enContinueWithNecessaryHtml from '../fixtures/en-continue-with-necessary.html?raw';
 import enContinueHtml from '../fixtures/en-continue.html?raw';
@@ -76,6 +78,8 @@ const FIXTURE_HTML: Record<string, string> = {
   'dialog-tos-consent-class.html': dialogTosConsentClassHtml,
   'dialog-tos-fixed.html': dialogTosFixedHtml,
   'dialog-tos.html': dialogTosHtml,
+  'en-ack-notice.html': enAckNoticeHtml,
+  'en-alertdialog-disallow.html': enAlertdialogDisallowHtml,
   'en-block-all.html': enBlockAllHtml,
   'en-continue-with-necessary.html': enContinueWithNecessaryHtml,
   'en-continue.html': enContinueHtml,
@@ -1198,6 +1202,39 @@ describe('fixtures（英語の語彙の拡充）', () => {
     const { log } = await runFixture('en-block-all.html', 'accept');
     expect(log).toContain('クリック: Allow all');
     expect(log).not.toContain('クリック: Block all cookies');
+  });
+
+  it('en-alertdialog-disallow: reject で Disallow all が押される', async () => {
+    const { outcome, log, doc } = await runFixture('en-alertdialog-disallow.html', 'reject');
+    expect(outcome).toMatchObject({
+      status: 'handled',
+      method: 'heuristic',
+      action: 'reject',
+      clickedText: 'disallowall',
+      clickedLabel: 'Disallow all',
+    });
+    expect(log).not.toContain('クリック: Allow all');
+    expect(doc.getElementById('fx-sheet')).toBeNull();
+  });
+
+  it('en-alertdialog-disallow: accept では Allow all が押される', async () => {
+    const { log } = await runFixture('en-alertdialog-disallow.html', 'accept');
+    expect(log).toContain('クリック: Allow all');
+    expect(log).not.toContain('クリック: Disallow all');
+  });
+
+  it('en-ack-notice: 選択肢のない通知バナーは両モードで Got it, thanks! が押される', async () => {
+    for (const mode of ['reject', 'accept'] as const) {
+      const { outcome, log, doc } = await runFixture('en-ack-notice.html', mode);
+      expect(outcome, mode).toMatchObject({
+        status: 'handled',
+        method: 'heuristic',
+        clickedText: 'gotitthanks',
+        clickedLabel: 'Got it, thanks!',
+      });
+      expect(log, mode).toContain('クリック: Got it, thanks!');
+      expect(doc.getElementById('fx-cookie-ack'), mode).toBeNull();
+    }
   });
 
   it('en-thanks-notice: 選択肢のない通知バナーは両モードで Thanks が押される', async () => {

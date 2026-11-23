@@ -740,7 +740,7 @@ const ENGLISH_BUTTONS: readonly (readonly [string, Label[]])[] = [
   ["That's fine", ['accept-weak']],
   ['Sure', ['accept-weak', 'close']],
   ['Alright', ['accept-weak', 'close']],
-  ['OK, got it', ['close']],
+  ['OK, got it', ['accept-weak', 'close']],
   ['Hide this message', ['close']],
   ['Hide notice', ['close']],
   ['Close this notice', ['close']],

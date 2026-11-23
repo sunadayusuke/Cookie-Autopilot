@@ -141,8 +141,8 @@ function isLooseClickable(el: Element, env: EngineEnv): boolean {
  * 重なっているため:
  * ① この経路は `collectButtons()` の `allowLoose`（`context.cookieSpecific === true`）
  *   のときにしか使わない。Cookie 固有語も属性ヒントも無い容器では絶対に呼ばれない
- * ② 弱一致・閉じる語は `ACCEPT_WEAK_EXACT` / `REJECT_WEAK_EXACT` / `CLOSE_EXACT` の
- *   **完全一致**でしか当たらない（部分一致では拾わない）
+ * ② 弱一致・閉じる語は表（`ACCEPT_WEAK_EXACT` / `REJECT_WEAK_EXACT` / `CLOSE_EXACT`）と
+ *   文言全体に掛ける正規表現の**完全一致**でしか当たらない（部分一致では拾わない）
  * ③ reject モードでは許可の弱一致（「同意」「OK」等）は `scoreCandidates` の reject 分岐
  *   （拒否の強一致 → 必要最小系 → `weakOk && isRejectWeak` の 3 つしか見ない）で
  *   一切候補にならない＝ここで拾う目的は「同意」を押すことではなく、①容器を成立させる
@@ -344,8 +344,19 @@ function canUseAncestorText(el: Element, attributes: string): boolean {
 }
 
 /**
+ * ダイアログを名乗る要素か（`role="dialog"` / `role="alertdialog"` / `aria-modal="true"` /
+ * `<dialog>` 要素）。`<dialog open>` は `showModal()` を通さないと position が absolute の
+ * ままなので、タグでも見る。
+ */
+export function isDialogLike(el: Element): boolean {
+  const role = el.getAttribute('role');
+  if (role === 'dialog' || role === 'alertdialog') return true;
+  return el.getAttribute('aria-modal') === 'true' || el.tagName === 'DIALOG';
+}
+
+/**
  * バナーらしい名乗りを持つ要素か（id / class / aria-label が容器ヒントのいずれか、
- * または `role="dialog"` / `aria-modal="true"`）。
+ * または `role="dialog"` / `role="alertdialog"` / `aria-modal="true"` / `<dialog>` 要素）。
  * 判定は**属性の読み取りだけ**で完結する——`position: fixed` を根拠に足さないのは、
  * `EngineEnv`（getComputedStyle）を isCookieSpecific まで引き回さずに済ませるため。
  * fixed なだけの無名の祖先を⒞の対象から外しても、**多くの構造では**祖先自身が容器の条件
@@ -361,8 +372,7 @@ function canUseAncestorText(el: Element, attributes: string): boolean {
  * （banner / notice）・dialog を名乗る祖先である。
  */
 function hasBannerLikeName(el: Element, attributes: string): boolean {
-  if (el.getAttribute('role') === 'dialog') return true;
-  if (el.getAttribute('aria-modal') === 'true') return true;
+  if (isDialogLike(el)) return true;
   if (attributes.trim() === '') return false;
   return (
     hasContainerHint(attributes) ||
