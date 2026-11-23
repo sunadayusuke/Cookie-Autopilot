@@ -209,3 +209,12 @@ v1.0.0 は公開済み。UI の日英 2 言語対応を含む **v1.1.0** をこ�
 - 変更内容: お問い合わせフォームの「個人情報の取扱いについて」のような、Cookie に触れる説明文の中の外部リンク（「オプトアウト（無効化）」など、別サイトへ新しいタブで開くリンク）を拒否ボタンと誤認して押してしまう不具合の修正。リンクで作られた決定ボタンは、同じオリジンへ同じタブで遷移するものだけを押す
 - `pnpm build && pnpm package` で `release/cookie-autopilot-v1.1.2.zip` を作成
 - 権限（storage / activeTab / alarms / ホストへのアクセス）・リモートコードの扱い・データ利用の申告は v1.1.1 から変更なし。掲載文の変更も不要
+
+## 更新（2026-11-23）
+
+英語バナー対応を広げた **v1.1.3** のパッケージを作成する。
+
+- `public/manifest.json` / `package.json` の version を `1.1.2` → `1.1.3` に更新（提出済みのバージョンと同じ番号は再アップロードできないため）
+- 変更内容: 英語バナーのボタン文言の拡充。拒否（"Disallow all" "Do not use analytics cookies" "Proceed without cookies" "Switch off" "Just necessary" など）、通知を閉じる相づち（"Got it, thanks!" "Close this message" "Dismiss notice" など）、設定導線と保存（"Let me choose" "Accept selected" など）。`role="alertdialog"` と `<dialog>` 要素のバナーも検出する。"Disallow all" を許可ボタンと誤認していた不具合の修正を含む
+- `pnpm build && pnpm package` で `release/cookie-autopilot-v1.1.3.zip` を作成
+- 権限（storage / activeTab / alarms / ホストへのアクセス）・リモートコードの扱い・データ利用の申告は v1.1.2 から変更なし。掲載文の変更も不要
