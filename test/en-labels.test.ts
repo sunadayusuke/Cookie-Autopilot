@@ -457,6 +457,9 @@ describe('拒否語・閉じる語を広げたぶんの安全側', () => {
     'Accept all - works without tracking',
     // 総量を言わない許可ボタンの補足文（先頭に限った拒否語には当たらない）
     "Accept — we don't track you",
+    'Accept — browse without tracking',
+    'Accept — proceed without tracking',
+    'Agree — use without cookies',
     'Accept Some features will not work without cookies',
     'OK — no tracking, promise',
   ])('%s は拒否として選ばない', (label) => {

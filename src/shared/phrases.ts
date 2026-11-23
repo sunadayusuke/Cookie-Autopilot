@@ -234,7 +234,8 @@ export const REJECT_STRONG = new RegExp(
     'withdraw\\s*consent|object\\s*to|disable(?!d)',
     '(?<!re|dont|donot)(?:turn|switch)\\s*(?:all\\s*|cookies\\s*|them\\s*)?off(?!adbl)',
     'continue\\s*without|without\\s*accepting',
-    `(?:^|proceed|browse|use)\\s*without\\s*${WITHOUT_OBJECT}`,
+    // `^` は前置き（proceed 等）ごと括る。選択肢の 1 つにすると "Accept — browse without tracking" の補足文に当たる
+    `^(?:proceed|browse|use)?\\s*without\\s*${WITHOUT_OBJECT}`,
     '^(?:no|stop)\\s*tracking',
     '(?<!un|dont|donot|ad)block\\s*(?:all\\s*)?(?:cookies|tracking|non)|(?<!un|dont|donot|ad)blockall$',
   ].join('|'),
