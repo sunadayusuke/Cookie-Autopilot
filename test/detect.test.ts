@@ -63,6 +63,20 @@ describe('容器検出', () => {
     expect(detectBannerContainer(document, env)?.el.id).toBe('d2');
   });
 
+  it('role="alertdialog" と <dialog> 要素でも検出する', () => {
+    setBody(`
+      <div id="d3" role="alertdialog"><p>We use cookies.</p><button>Allow all</button><button>Disallow</button></div>
+    `);
+    expect(detectBannerContainer(document, env)?.el.id).toBe('d3');
+
+    setBody(`
+      <dialog id="d4" open><p>This site uses cookies.</p><button>Got it, thanks!</button></dialog>
+    `);
+    const container = detectBannerContainer(document, env);
+    expect(container?.el.id).toBe('d4');
+    expect(container?.signals).toContain('overlay');
+  });
+
   it('自身の本文にバナー語も Cookie の名指しも無い固定バーは採用しない', () => {
     setBody(`
       <div id="promo" style="position:fixed"><p>セール開催中です</p><button>今すぐ見る</button></div>

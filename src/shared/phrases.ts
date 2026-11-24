@@ -139,22 +139,30 @@ export const NON_DECISION =
  * 言えない（実 DOM を取得できないため真因は未確定。docs/SPEC.md の
  * 「実サイト巡回・第2巡の反映」参照）。これは同型の構造——設定導線がカタカナの
  * 「オプション」表記しか無い CMP——への備えとして持つ。
+ * `choose` は文末（"Let me choose" "I want to choose"）か、目的語が cookies のもの（"Choose
+ * cookies" "Select cookies"）だけ。部分一致にすると "Choose language" "Choose a plan" まで設定
+ * ボタンになる——設定パネル層は容器内で最初に当たった設定ボタンを押すので、本物の設定ボタンに
+ * 届かなくなる。
  */
 export const SETTINGS_BUTTON =
-  /settings?|manage|preferences?|customi[sz]e|options|choices|configure|adjust|設定|カスタマイズ|オプション/i;
+  /settings?|manage|preferences?|customi[sz]e|options|choices|choose$|(?:choose|select)\s*(?:which\s*|my\s*|your\s*)?cookies|configure|adjust|設定|カスタマイズ|オプション/i;
 
 /**
  * 総量マーカー。非決定語より決定語を優先してよいのは、
  * 「すべて〜」と総量を明示している文言（"Accept all purposes" "Reject all vendors"）だけ。
  * これが無いと "Manage or reject cookies" のような設定ボタンまで決定ボタンになってしまう。
+ * `all(?!ow)` は "Manage or disallow cookies" の `dis-all-ow` を総量と読まないため。
  */
-export const TOTALITY = /all|everything|すべて|全て/i;
+export const TOTALITY = /all(?!ow)|everything|すべて|全て/i;
 
 /**
- * 否定形。許可語の言い回しを含んでいても拒否ボタンだと言い切れる印
- * （"Do not accept all" "Continue without accepting"）。
+ * 否定された許可語（"Do not accept all" "Disallow all" "Continue without accepting all"
+ * "Refuse to accept all"）。isAmbiguousReject はこれを取り除いてから「すべて許可」の言い回しを探す。
+ * 否定語が文言のどこかにあるだけでは否定形と見なさない——"Accept all — we don't track you"
+ * "Accept all — you can disagree at any time" のような補足付きの許可ボタンを、補足文の拒否語で
+ * 押してしまうため。
  */
-export const NEGATION = /donot|dont|without|never/i;
+const NEGATED_ACCEPT = /(?:not|dont|never|without|dis|refuseto|declineto)(?:accept|allow|agree|enable)/g;
 
 /**
  * 埋め込みの「ブロック解除」語。Cookie 設定のせいで動画・地図などを止めている
@@ -199,9 +207,40 @@ export const UNBLOCK = /unblock|ブロック(?:を)?(?:すべて|全て)?解除/
  *   許可の specific 一致しか見ないので、ここで除かないと防げない）
  * - `ad`: 広告ブロッカーの案内の "Adblock all"
  * "Blocked content" "Block ads" は目的語が合わないので当たらない。
+ * 否定形は `(not|dont|never) + 動詞` にまとめてある。`accept` `agree` `allow` `consent` は
+ * 文言のどこにあっても当てる（"Do not accept" "I will not consent" "Not accept"）。過去分詞は
+ * 除く——"Not allowed" "Cookies not enabled" は状態の表示で、押すボタンではない。
+ * `enable` `track` `turn on` `use … cookies` と `no tracking` `without + 目的語` は**文言の先頭**
+ * （"No," "I" "Proceed" などの前置きは可）に限る。補足文つきの許可ボタン
+ * `<button>Accept<small>We don't track you</small></button>` の連結テキストに当てないため。
+ * `disallow` は ACCEPT_STRONG の `allow` に部分一致するので、ここに無いと許可語になる。
+ * `(accept|allow|enable) none` も同じ理由。`none(?!ss)` は "Accept non-essential cookies"
+ * （`acceptnone-ssential`）よけ——これに当たると許可ボタンを拒否として押す。
+ * `turn off` は `re-turn off-er`・否定形・広告ブロッカーの案内（"Turn off ad blocker"）を除く。
  */
-export const REJECT_STRONG =
-  /拒否|拒絶|お断り|同意しない|許可しない|承諾しない|承認しない|受け入れない|利用しない|使用しない|オフにする|無効にする|同意せずに(?:続ける|進む)|(?:すべて|全て)解除|選択を解除|オプトアウト|辞退|reject|decline|deny|refuse|disagree|opt\s*out|do\s*not\s*accept|dont\s*accept|do\s*not\s*agree|dont\s*agree|do\s*not\s*allow|dont\s*allow|do\s*not\s*consent|dont\s*consent|withdraw\s*consent|object\s*to|disable(?!d)|turn\s*off|turn\s*all\s*off|continue\s*without|without\s*accepting|(?<!un|dont|donot|ad)block\s*(?:all\s*)?(?:cookies|tracking|non)|(?<!un|dont|donot|ad)blockall$/i;
+const USE_OBJECT =
+  '(?:any|the|these|optional|analytics|additional|tracking|marketing|advertising|performance|functional|non\\s*essential|third\\s*party)?\\s*cookies';
+const WITHOUT_OBJECT =
+  '(?:agreeing|consenting|consent|tracking|(?:any|optional|non\\s*essential|tracking|marketing|advertising)?\\s*cookies)';
+
+export const REJECT_STRONG = new RegExp(
+  [
+    '拒否|拒絶|お断り|同意しない|許可しない|承諾しない|承認しない|受け入れない|利用しない|使用しない|オフにする|無効にする',
+    '同意せずに(?:続ける|進む)|(?:すべて|全て)解除|選択を解除|オプトアウト|辞退',
+    'reject|decline|deny|refuse|disagree|disallow(?!ed)|deactivate(?!d)|opt\\s*(?:me\\s*)?out',
+    '(?:not|dont|never)\\s*(?:(?:accept|allow|consent)(?!ed)|agree(?!d))',
+    `^(?:no)?(?:i)?(?:do|will|would)?(?:not|dont|never)(?:enable(?!d)|track(?!ed)|(?:turn|switch)\\s*on|use\\s*${USE_OBJECT})`,
+    '(?:accept|allow|enable)\\s*(?:none(?!ss)|nothing|no\\s*cookies)',
+    'withdraw\\s*consent|object\\s*to|disable(?!d)',
+    '(?<!re|dont|donot)(?:turn|switch)\\s*(?:all\\s*|cookies\\s*|them\\s*)?off(?!adbl)',
+    'continue\\s*without|without\\s*accepting',
+    // `^` は前置き（proceed 等）ごと括る。選択肢の 1 つにすると "Accept — browse without tracking" の補足文に当たる
+    `^(?:proceed|browse|use)?\\s*without\\s*${WITHOUT_OBJECT}`,
+    '^(?:no|stop)\\s*tracking',
+    '(?<!un|dont|donot|ad)block\\s*(?:all\\s*)?(?:cookies|tracking|non)|(?<!un|dont|donot|ad)blockall$',
+  ].join('|'),
+  'i',
+);
 
 /**
  * 拒否語（必要最小系）。語順は問わない
@@ -238,6 +277,8 @@ export const REJECT_MINIMAL = new RegExp(
     `minimal\\s*(?:only|cookies)${NOT_OTHER_CATEGORY}`,
     `(?:accept|allow|use|enable)\\s*(?:the\\s*)?(?:strictly\\s*)?(?:necessary|essential|required)${NOT_OTHER_CATEGORY}`,
     `(?:continue|proceed)\\s*with\\s*(?:the\\s*)?(?:strictly\\s*)?(?:necessary|essential|required|minimal)\\s*(?:cookies?|only)${NOT_OTHER_CATEGORY}`,
+    // "Just necessary" "Just the essential cookies"。`adjust necessary …` は設定導線なので除く
+    `(?<!ad)just\\s*(?:the\\s*)?(?:strictly\\s*)?(?:necessary|essential|required)${NOT_OTHER_CATEGORY}`,
     'functional.*only|only.*functional|technical.*only|mandatory.*only|only.*mandatory',
   ].join('|'),
   'i',
@@ -258,6 +299,12 @@ export const REJECT_WEAK_EXACT: readonly string[] = [
   'later',
   'maybe later',
   'skip',
+  'no cookies',
+  'no cookies, please',
+  'nope',
+  'prefer not',
+  'i prefer not',
+  "i'd rather not",
 ].map((w) => normalize(w));
 
 /**
@@ -269,9 +316,12 @@ export const REJECT_WEAK_EXACT: readonly string[] = [
  * なるが、`isAmbiguousReject` はこの正規表現だけを見るため。連結テキストで拒否語に
  * 化けた許可ボタンを reject モードの候補から外すのに要る）。
  * `すべてを受け入れる` `i accept all` は先頭の言い回し・`accept all` に当たるので足していない。
+ * `use all` は入れない。空白を落とした文言では "Refuse all"（`ref-useall`）に部分一致し、
+ * isAmbiguousReject が拒否ボタンを候補から外してしまう。`continue with all` を文末に限るのも
+ * 同じ理由（"Continue with all essential cookies only" "Continue with allowed cookies"）。
  */
 export const ACCEPT_STRONG_SPECIFIC =
-  /(?:すべて|全て)(?:の(?:cookie|クッキー))?(?:に|を)?(?:同意|許可|受け入れる)|全部(?:に)?(?:同意|許可)|accept\s*all|allow\s*all|enable\s*all|agree\s*(?:to\s*)?(?:all|everything)|accept\s*everything|allow\s*everything|yes\s*to\s*all|enable\s*cookies|accept\s*(?:all\s*)?cookies|allow\s*(?:all\s*)?cookies/i;
+  /(?:すべて|全て)(?:の(?:cookie|クッキー))?(?:に|を)?(?:同意|許可|受け入れる)|全部(?:に)?(?:同意|許可)|accept\s*all|allow\s*all|enable\s*all|agree\s*(?:to\s*)?(?:all|everything)|accept\s*everything|allow\s*everything|yes\s*to\s*(?:all|cookies)|enable\s*cookies|accept\s*(?:all\s*)?cookies|allow\s*(?:all\s*)?cookies|(?:turn|switch)\s*on\s*(?:all|cookies)|(?:turn|switch)\s*all\s*on|(?:continue|proceed)\s*with\s*all\s*(?:cookies)?$/i;
 
 /**
  * 許可語（強一致）のうち、対象を限定しない言い回し。
@@ -339,7 +389,43 @@ export const ACCEPT_WEAK_EXACT: readonly string[] = [
   'ok, i understand',
   'i got it',
   'continue browsing',
+  'keep browsing',
+  'continue to site',
+  'continue to website',
+  'proceed',
+  'close and continue',
+  'fine by me',
+  'sure thing',
+  "i'm happy",
+  'all cookies',
 ].map((w) => normalize(w));
+
+/**
+ * 同意寄りの相づちの言い回し（完全一致）。"I'm fine with this" "Fine with me" "Happy with that"
+ * "I'm OK with cookies"。許可の弱一致としてだけ使い、閉じる語にはしない（表の
+ * "I'm OK with that" と同じ扱い）。強一致に入れないのは、年齢確認ゲートの容器で弱一致が
+ * 無効になる仕組みに乗せるため。
+ */
+const AGREEABLE = /^(?:im|iam)?(?:ok|okay|fine|happy)with(?:that|this|it|me|(?:all|the|these)?cookies)$/;
+
+/**
+ * 「読んだことを伝えるだけ」の相づちの組み合わせ（完全一致）。"Got it, thanks!" "OK, understood"
+ * "Okay, thank you" "Noted, thanks" のように語順と組み合わせが無数にあるので、表に 1 つずつ
+ * 足す代わりに「相づちの語だけが 1〜3 個並んだ文言」として受ける。許可の弱一致と閉じる語の
+ * 両方で使う（表の `ok` `got it` `thanks` と同じ扱い）。
+ * `yes` は入れない（年齢確認ゲートよけ。ACCEPT_WEAK_EXACT の説明を参照）。
+ */
+const ACKNOWLEDGEMENT =
+  /^(?:ok|okay|alright|allright|fine|sure|noted|thanks|thankyou|gotit|igotit|gotcha|understood|understand|iunderstand|acknowledged?|iacknowledge){1,3}$/;
+
+/**
+ * 閉じる操作そのものの語（完全一致）。"Close this message" "Dismiss notice" "Close cookie
+ * consent" "Close dialog" のように「閉じる動詞 ＋ 対象の名詞」の組み合わせで受ける。
+ * `hide` は `banner` を対象にしない——"Hide banner" "Hide cookie banner" は折りたたみ語
+ * （COLLAPSE_EXACT）で、自動では押さない。
+ */
+const CLOSE_ACTION =
+  /^(?:(?:close|dismiss)(?:(?:this|the)?(?:cookies?)?(?:consent|privacy)?(?:banner|bar|message|notice|notification|dialog|popup|modal|alert|panel|preferences|settings)|(?:this|the)?cookies?consent)?|hide(?:(?:this|the)?(?:cookies?)?(?:consent|privacy)?(?:message|notice|notification|alert))?)$/;
 
 /**
  * 通知のみバナーの閉じる語（完全一致）。容器に Cookie 固有語があるときだけ有効。
@@ -393,6 +479,11 @@ export const CLOSE_EXACT: readonly string[] = [
   'ok, i understand',
   'i got it',
   'continue browsing',
+  'keep browsing',
+  'continue to site',
+  'continue to website',
+  'proceed',
+  'close and continue',
   // 閉じる操作そのものの語（ACCEPT_WEAK_EXACT には入れない）
   'close banner',
   'close message',
@@ -402,6 +493,11 @@ export const CLOSE_EXACT: readonly string[] = [
   'hide cookie message',
   '×',
   '✕',
+  '✖',
+  '✗',
+  '✘',
+  '⨯',
+  '╳',
   'x',
 ].map((w) => normalize(w));
 
@@ -475,6 +571,8 @@ export function isRejectWeak(normalized: string): boolean {
 export function isAcceptStrong(normalized: string): boolean {
   if (normalized === '') return false;
   if (isRejectStrong(normalized) || isRejectMinimal(normalized)) return false;
+  // "Close cookie consent" は `consent` に部分一致するが、閉じる操作であって同意ではない
+  if (CLOSE_ACTION.test(normalized)) return false;
   return ACCEPT_STRONG.test(normalized);
 }
 
@@ -489,7 +587,9 @@ export function isAcceptStrongSpecific(normalized: string): boolean {
 }
 
 export function isAcceptWeak(normalized: string): boolean {
-  return ACCEPT_WEAK_EXACT.includes(normalized);
+  return (
+    ACCEPT_WEAK_EXACT.includes(normalized) || ACKNOWLEDGEMENT.test(normalized) || AGREEABLE.test(normalized)
+  );
 }
 
 /**
@@ -501,8 +601,8 @@ export function isAcceptWeak(normalized: string): boolean {
  */
 export function isAmbiguousReject(normalized: string): boolean {
   if (normalized === '') return false;
-  if (NEGATION.test(normalized)) return false;
-  return ACCEPT_STRONG_SPECIFIC.test(normalized);
+  // 取り除いた跡は `|` で埋める（前後がつながって別の言い回しに化けないように）
+  return ACCEPT_STRONG_SPECIFIC.test(normalized.replace(NEGATED_ACCEPT, '|'));
 }
 
 /**
@@ -524,7 +624,9 @@ export function isUnblockWord(normalized: string): boolean {
 }
 
 export function isCloseWord(normalized: string): boolean {
-  return CLOSE_EXACT.includes(normalized);
+  return (
+    CLOSE_EXACT.includes(normalized) || ACKNOWLEDGEMENT.test(normalized) || CLOSE_ACTION.test(normalized)
+  );
 }
 
 /** 折りたたみ語（完全一致）。完了状態の案内かどうかの判定にだけ使う（自動では押さない） */

@@ -17,7 +17,7 @@ import {
   isRejectStrong,
 } from '../shared/phrases';
 import type { ButtonCandidate } from './candidates';
-import { collectButtons, decisionCandidates, isCookieSpecific } from './candidates';
+import { collectButtons, decisionCandidates, isCookieSpecific, isDialogLike } from './candidates';
 import { deepElements, deepQueryFirst } from './deepQuery';
 import type { EngineEnv, Rect } from './env';
 import { normalize } from './normalize';
@@ -162,13 +162,12 @@ function isInteractive(el: Element): boolean {
 }
 
 /**
- * 前面に出す UI か（`role="dialog"` / `aria-modal="true"` / computed position が fixed・sticky）。
+ * 前面に出す UI か（ダイアログを名乗る / computed position が fixed・sticky）。
  * position の判定は getComputedStyle が要るので、容器になり得ないタグ（インライン・葉要素）は
  * 先に落とす。入口の足切りと `overlay` の加点で同じ判定を使う。
  */
 function isOverlay(el: Element, env: EngineEnv): boolean {
-  const role = el.getAttribute('role');
-  if (role === 'dialog' || el.getAttribute('aria-modal') === 'true') return true;
+  if (isDialogLike(el)) return true;
   if (NON_CONTAINER_TAGS.has(el.tagName)) return false;
   const position = env.getPosition(el);
   return position === 'fixed' || position === 'sticky';
